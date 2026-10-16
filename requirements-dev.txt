@@ -1,0 +1,8 @@
+-r requirements.txt
+
+# Quality & testing
+pytest>=8.0.0
+pytest-asyncio>=0.23.0
+
+# Optional: Gradio sandbox (ENABLE_UI=true)
+# gradio>=4.20.0

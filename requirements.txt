@@ -1,0 +1,33 @@
+# ==============================================================================
+# Tech Tutor Engine - Production dependencies
+# CPU-only PyTorch wheels are resolved through the extra index below (the Docker
+# build also exports PIP_EXTRA_INDEX_URL). This avoids ~2 GB of CUDA libraries.
+# ==============================================================================
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+# Async web core
+fastapi>=0.110.0,<1.0.0
+uvicorn[standard]>=0.28.0,<1.0.0
+pydantic>=2.6.0,<3.0.0
+pydantic-settings>=2.2.0,<3.0.0
+python-multipart>=0.0.9
+python-dotenv>=1.0.0
+httpx>=0.27.0
+
+# ASR (faster-whisper >= 1.1.0 is required for the large-v3-turbo model)
+setuptools<70.0.0
+faster-whisper>=1.1.0
+jiwer>=3.0.3
+
+# Vector database & embeddings
+# NOTE: keep chromadb on the same major version used to build the persisted corpus.
+chromadb>=1.5.0,<2.0.0
+sentence-transformers>=2.5.0
+torch>=2.2.0
+numpy>=1.26.0
+
+# LLM client (OpenAI-compatible, Groq Cloud)
+openai>=1.14.0
+
+# Hugging Face Hub (corpus snapshot download)
+huggingface-hub>=0.21.4

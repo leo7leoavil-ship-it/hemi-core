@@ -1,0 +1,66 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Distribution / packaging
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Testing & coverage
+.pytest_cache/
+.coverage
+htmlcov/
+*.log
+
+# Environment variables & secrets
+.env
+.env.local
+*.pem
+*.key
+
+# ChromaDB & vector storage (hosted on the Hugging Face Hub, never in Git)
+data/technical_corpus_db/*
+!data/technical_corpus_db/.gitkeep
+*.sqlite3
+*.tar.gz
+
+# Model weights & caches
+*.bin
+*.pt
+*.onnx
+models/
+huggingface/
+.cache/
+
+# Benchmark outputs
+benchmark_results/
+
+# IDE & OS files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
