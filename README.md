@@ -9,160 +9,142 @@ pinned: false
 short_description: MaaS engine for technical English evaluation (ASR + RAG + LLM)
 ---
 
-# Tech Tutor Engine Blueprint
+# Tech Tutor Engine
 
 **Asistente de Inteligencia Artificial Especializado en Inglés Técnico para Ingenieros del Área de Tecnología**  
-*Proyecto de Titulación - Ingeniería en Computación · Universidad Autónoma de Tlaxcala*
+*Proyecto de Titulación · Licenciatura en Ingeniería en Computación · Universidad Autónoma de Tlaxcala (UAM Campus Calpulalpan)*
 
-> El bloque YAML superior es la configuración del Space de Hugging Face (`sdk: docker`, `app_port: 7860`). **No lo elimine**: sin él, el Space no arranca.
+> El bloque YAML superior mantiene compatibilidad con despliegues en Hugging Face Spaces (`sdk: docker`, `app_port: 7860`).
 
 ---
 
-## System Overview
+## 1. Visión General
 
-`tech-tutor-engine` es un **Motor de Inferencia y Evaluación Técnica Asíncrono (Model-as-a-Service)** que diagnostica y puntúa la competencia en **inglés técnico** de ingenieros de software. Expone una API REST y un canal WebSocket (sin interfaz gráfica propia; el frontend queda como Trabajo Futuro) sobre **FastAPI** y tres pipelines de IA:
+`tech-tutor-engine` es un **Motor de Inferencia y Evaluación Técnica Asíncrono (Model-as-a-Service / MaaS)** construido sobre **FastAPI** que diagnostica y puntúa la competencia en **inglés técnico** (hablado y escrito) de ingenieros de software mediante un pipeline multimodal de tres etapas:
 
-1. **ASR:** `faster-whisper` (`large-v3-turbo`, CPU `int8`) sobre `io.BytesIO`, con `initial_prompt` léxico técnico y métricas de confianza, WPM y WER/CER (`jiwer`) opcionales.
-2. **RAG:** `ChromaDB` (`tech_tutor_corpus`, ~213 439 vectores, `all-MiniLM-L6-v2`, coseno) con sanitización regex post-recuperación y fusión `"{escenario}: {texto}"`.
-3. **LLM:** `openai/gpt-oss-120b` en **Groq Cloud** (`temperature=0.1`, Structured Outputs) bajo rúbricas MCER/CEFR. La densidad léxica se calcula de forma **determinista en Python**, no por el LLM.
+1. **ASR (`app/services/asr_service.py`):** `faster-whisper` (`large-v3-turbo`, CPU `int8`, `beam_size=1`) con decodificación estrictamente en memoria (`io.BytesIO` / arreglo `float32` directo para `pcm16`), parche de compatibilidad para `PyAV 19+`, filtro VAD, `initial_prompt` léxico de ingeniería, límites tempranos de **5 MB / 60 s**, semáforo asíncrono (`ASR_MAX_CONCURRENCY=1`, cola `10 s` → `429`), cancelación cooperativa entre segmentos (`threading.Event`) y métricas acústicas (confianza, WPM y WER/CER opcional con `jiwer`).
+2. **RAG (`app/services/rag_service.py`):** `ChromaDB` persistente (`tech_tutor_corpus`, **213,439 vectores**, `all-MiniLM-L6-v2`, similitud coseno) con sanitización regex post-recuperación y fusión de contexto `"{escenario_efectivo}: {texto}"`.
+3. **LLM-as-a-Judge (`app/services/llm_service.py`):** `openai/gpt-oss-120b` en **Groq Cloud** (`temperature=0.1`, Structured Outputs con fallback automático a JSON mode) bajo rúbricas **MCER / CEFR (B1–C2)**. La densidad léxica (`lexical_density_ratio`) se calcula de forma **determinista en Python**, nunca por el LLM.
 
 ```mermaid
 flowchart LR
-    C["Cliente REST / WebSocket"] -->|"Bearer token"| API["FastAPI + Uvicorn (puerto 7860)"]
-    API -->|"asyncio.to_thread"| ASR["faster-whisper int8"]
-    API -->|"asyncio.to_thread"| RAG["ChromaDB + MiniLM"]
+    C["Cliente REST / WebSocket / Consola /ui"] -->|"API_AUTH_TOKEN"| API["FastAPI + Uvicorn"]
+    API -->|"Semáforo (1) + to_thread"| ASR["faster-whisper int8 (beam=1)"]
+    API -->|"asyncio.to_thread"| RAG["ChromaDB (213k) + MiniLM"]
     ASR --> LLM
-    RAG --> LLM["Groq: gpt-oss-120b"]
+    RAG --> LLM["Groq Cloud: gpt-oss-120b"]
     LLM --> API
 ```
 
 ---
 
-## Subdirectories & System Boundaries
+## 2. Interfaces Web Incluidas (Cero Dependencias Extra)
 
-- [app](./app/README.md): Central FastAPI application package coordinating lifespan preloading, CORS middleware, API v1 routing, core security/logging, schemas, and AI pipeline services.
-- [scripts](./scripts/README.md): Operational utilities for local server execution (`run_server.py`) and large-scale ChromaDB corpus seeding (`seed_corpus.py`).
-
----
-
-## Global Invariants
-
-- **Fail-closed API security**: Every endpoint (REST and WebSocket) enforces validation against `API_AUTH_TOKEN`; an unset or invalid token causes immediate 401 Unauthorized rejection.
-- **In-memory audio processing**: Audio streams are decoded strictly via `io.BytesIO` without writing temporary audio files to disk.
-- **Deterministic metric computation**: Technical lexical density is computed deterministically in Python code; the LLM is prohibited from calculating or hallucinating ratios.
-- **Strict error mapping**: AI pipeline failures map to explicit HTTP status codes (400 format/empty, 413 file size, 422 scenario/unintelligible, 502 LLM failure, 503 ASR uninitialized) without fabricating mock scores.
+| Ruta | Propósito | Acceso |
+|---|---|---|
+| **`GET /ui`** | **Consola Interactiva de Pruebas** (HTML/CSS/JS nativo con selector **Tema Claro / Oscuro**): captura de micrófono, subida de archivos, streaming WebSocket en vivo con botón `Cancelar / Reset`, evaluación de texto, búsqueda RAG y generador cURL/Postman. | Pública (solicita `API_AUTH_TOKEN` en barra superior) |
+| **`GET /docs`** | **Portal de Documentación API** (tema claro corporativo estilo Oracle Docs): guía paso a paso para Postman, cURL y WebSockets, catálogo de escenarios y tabla de códigos HTTP. | Pública |
+| **`GET /redoc`** | **Referencia OpenAPI Formal (ReDoc 2.1.5)** con esquemas JSON detallados y tema corporativo neutro. | Pública |
+| **`GET /openapi.json`** | Especificación OpenAPI 3.x en JSON. | Pública |
 
 ---
 
-## Global Side Effects
+## 3. Estructura del Repositorio
 
-- **External AI inference**: Outbound HTTPS calls to Groq Cloud API (`https://api.groq.com/openai/v1`).
-- **Vector database persistence**: Local disk access to SQLite vector database at `data/technical_corpus_db/chroma.sqlite3`.
-- **Automated dataset synchronization**: Downloads snapshot from Hugging Face Hub during application startup lifespan when local vector database is absent.
-
----
-
-## System Verification
-
-- Run: `pytest`
-
----
-
-## Estructura del Repositorio
-
-```
+```text
 tech_tutor_engine/
-├── .github/workflows/deploy.yml   # CI (pytest) + despliegue a Hugging Face Spaces
+├── .github/workflows/deploy.yml      # CI (pytest) + despliegue opcional a HF Spaces
 ├── app/
-│   ├── main.py                    # Lifespan (descarga de corpus + precarga), CORS, rutas
-│   ├── core/                      # config.py, security.py, logging.py
+│   ├── main.py                       # Lifespan (precarga de modelos), CORS, rutas /docs, /redoc, /ui
+│   ├── core/
+│   │   ├── config.py                 # Pydantic Settings v2 (límites, timeouts, concurrencia, alias)
+│   │   ├── logging.py                # Logger estructurado
+│   │   ├── openapi_docs.py           # Portal /docs estilo Oracle, tema /redoc, favicon SVG y descripción OpenAPI
+│   │   └── security.py               # Autenticación fail-closed (Bearer / X-API-Key / ?token=)
 │   ├── api/v1/
-│   │   ├── router.py
-│   │   └── endpoints/             # health, query, evaluate, websocket
-│   ├── services/                  # asr_service, rag_service, llm_service,
-│   │                              # evaluation_pipeline, corpus_sync
-│   ├── schemas/                   # request_schemas, response_schemas (Pydantic v2)
-│   └── ui/gradio_app.py           # Sandbox OPCIONAL (ENABLE_UI=true)
-├── data/                          # Base vectorial local (ignorada por Git)
-├── scripts/                       # run_server.py, seed_corpus.py
-├── tests/                         # test_api/asr/rag/llm/config/schemas + benchmark_thesis.py
-├── Dockerfile                     # Multi-stage, ffmpeg, pre-descarga de pesos
+│   │   ├── router.py                 # Registro de rutas v1
+│   │   └── endpoints/                # health.py, query.py, evaluate.py, websocket.py
+│   ├── schemas/                      # request_schemas.py (9+1 escenarios + resolve_scenario), response_schemas.py
+│   ├── services/                     # asr_service, rag_service, llm_service, evaluation_pipeline, corpus_sync
+│   └── ui/gradio_app.py              # Consola web interactiva nativa en /ui (sin dependencia de Gradio)
+├── data/technical_corpus_db/         # Base vectorial local ChromaDB (ignorada por Git)
+├── scripts/                          # run_server.py, seed_corpus.py
+├── tests/                            # Suite de 72 pruebas (sin red ni pesos) + benchmark_thesis.py
+├── Dockerfile                        # Multi-stage CPU, ffmpeg, pre-descarga de modelos
 ├── requirements.txt / requirements-dev.txt
 ├── .env.example · .dockerignore · .gitignore · pytest.ini
-└── GUIA_DESPLIEGUE_PRODUCCION.md  # Paso a paso hacia producción
+├── Especificacion_tech_engine.md     # Especificación técnica formal para la tesis (v1.0.0)
+└── GUIA_DESPLIEGUE_PRODUCCION.md     # Guía de operación local (Cloudflare Tunnel) y producción 24/7 (Docker/VPS)
 ```
 
 ---
 
-## Ejecución Local
+## 4. Ejecución Local Rápida
 
-```bash
-python -m venv .venv && .venv\Scripts\activate        # Windows (Linux/macOS: source .venv/bin/activate)
+```powershell
+python -m venv .venv
+.venv\Scripts\activate                   # Linux/macOS: source .venv/bin/activate
 pip install -r requirements-dev.txt
-cp .env.example .env                                   # y complete GROQ_API_KEY y API_AUTH_TOKEN
-python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+copy .env.example .env                   # Complete GROQ_API_KEY y API_AUTH_TOKEN
+python -u -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-Requiere **ffmpeg** en el `PATH` si se procesan contenedores comprimidos fuera de Docker. Swagger: `http://localhost:8000/docs`.
+- Consola de pruebas: `http://127.0.0.1:8000/ui`
+- Documentación de consumo: `http://127.0.0.1:8000/docs`
+- Especificación ReDoc: `http://127.0.0.1:8000/redoc`
 
 ### Variables de entorno principales
 
-| Variable (alias) | Descripción |
-|---|---|
-| `GROQ_API_KEY` | Clave de Groq Cloud (secreto) |
-| `API_AUTH_TOKEN` (`API_TOKEN`) | Token Bearer/`X-API-Key`. **Sin valor por defecto**: si está vacío, toda petición recibe 401 |
-| `LLM_MODEL` (`LLM_MODEL_NAME`) | `openai/gpt-oss-120b` |
-| `ASR_MODEL_NAME` (`WHISPER_MODEL_NAME`) | `large-v3-turbo` |
-| `CHROMA_PERSIST_DIRECTORY` (`CHROMA_PERSIST_DIR`) | `./data/technical_corpus_db` |
-| `CORPUS_DATASET_REPO` / `HF_TOKEN` | Dataset del Hub del que se descarga la base vectorial si falta |
-| `ENABLE_UI` | `true` monta el sandbox Gradio en `/ui` (requiere `pip install gradio`) |
+| Variable (alias) | Valor por defecto | Descripción |
+|---|---|---|
+| `GROQ_API_KEY` | *(obligatorio)* | Clave de Groq Cloud |
+| `API_AUTH_TOKEN` (`API_TOKEN`) | *(obligatorio)* | Token Bearer / `X-API-Key` / `?token=`. **Fail-closed:** si está vacío, toda petición recibe `401` |
+| `LLM_MODEL` (`LLM_MODEL_NAME`) | `openai/gpt-oss-120b` | Modelo en Groq Cloud |
+| `ASR_MODEL_NAME` (`WHISPER_MODEL_NAME`) | `large-v3-turbo` | Modelo de `faster-whisper` |
+| `ASR_BEAM_SIZE` | `1` | Decodificación *greedy* optimizada para baja latencia en CPU |
+| `MAX_AUDIO_BYTES` / `MAX_AUDIO_SECONDS` | `5242880` / `60.0` | Límites estrictos de audio (5 MB / 60 segundos) |
+| `ASR_MAX_CONCURRENCY` / `ASR_QUEUE_TIMEOUT_SECONDS` | `1` / `10.0` | Serialización de inferencia ASR en CPU y espera máxima antes de `429` |
+| `ASR_TIMEOUT_SECONDS` / `RAG_TIMEOUT_SECONDS` / `LLM_TIMEOUT_SECONDS` | `90.0` / `15.0` / `30.0` | Timeouts explícitos por etapa (`504 Gateway Timeout`) |
+| `CHROMA_PERSIST_DIRECTORY` (`CHROMA_PERSIST_DIR`) | `./data/technical_corpus_db` | Directorio de la base vectorial ChromaDB |
+| `CORPUS_DATASET_REPO` / `HF_TOKEN` | `leonardo-beltran/tech-tutor-corpus` | Dataset privado de HF Hub para descarga automática si falta la base local |
 
 Lista completa en [`.env.example`](.env.example).
 
 ---
 
-## API
+## 5. API y Catálogo de Escenarios
 
-Todas las rutas requieren `Authorization: Bearer <API_AUTH_TOKEN>` (o `X-API-Key`), salvo `GET /` y `/docs`.
+Todas las rutas de negocio requieren `Authorization: Bearer <API_AUTH_TOKEN>` (o `X-API-Key`), salvo `/`, `/docs`, `/redoc`, `/openapi.json` y `/ui`.
 
 | Método | Ruta | Descripción |
 |---|---|---|
-| `GET` | `/health` · `/api/v1/health` | Estado: `status`, `app`, `version`, `chroma_ready`, `asr_ready`, `llm_configured` |
+| `GET` | `/health` · `/api/v1/health` | Estado del sistema (`chroma_ready`, `asr_ready`, `llm_configured`) |
 | `POST` | `/api/v1/query` | Búsqueda semántica directa: `{"query_text": "...", "top_k": 3}` |
-| `POST` | `/api/v1/evaluate/voice` | `multipart/form-data`: `audio_file`, `target_scenario`, `expected_transcript` (opcional) |
-| `POST` | `/api/v1/evaluate/text` | `{"candidate_text": "...", "target_scenario": "..."}` |
-| `WS` | `/api/v1/ws/practice` | Streaming de audio con eventos de progreso |
+| `POST` | `/api/v1/evaluate/text` | Evaluación de texto: `{"candidate_text": "...", "target_scenario": "...", "custom_scenario": null}` |
+| `POST` | `/api/v1/evaluate/voice` | `multipart/form-data`: `audio_file`, `target_scenario`, `custom_scenario` (condicional), `expected_transcript` (opcional) |
+| `WS` | `/api/v1/ws/practice` | Streaming full-duplex (`?token=`) con eventos `ready → transcribing → retrieving → evaluating → completed` y cancelación vía `{"action": "reset"}` |
 
-**Escenarios:** `system_design_interview`, `code_review`, `incident_postmortem`, `architecture_presentation` (las etiquetas anteriores `System Design`, `Code Review`, `Thesis Defense` se siguen aceptando).
+**Escenarios soportados (9 predefinidos + `custom`):**
+- `system_design_interview` · `code_review` · `incident_postmortem` · `architecture_presentation` · `daily_standup` · `technical_debugging` · `devops_ci_cd` · `database_optimization` · `api_design_review`
+- `custom` (requiere `custom_scenario` de **3 a 120 caracteres imprimibles en una sola línea**; no permitido junto a escenarios predefinidos).
 
-**Códigos de error:** `400` formato no soportado/archivo vacío · `401` token inválido · `413` audio demasiado grande · `422` escenario desconocido, audio ilegible o sin habla · `502` fallo del motor LLM · `503` ASR no cargado.
-
----
-
-## Rúbricas MCER / CEFR
-
-| Nivel | Descriptor técnico | Criterio |
-|---|---|---|
-| **B1** | Umbral | Idea principal con estructuras simples y vocabulario genérico |
-| **B2** | Usuario independiente | Conceptos claros con frases coloquiales (*"we put a cache"*) |
-| **C1** | Competencia operativa eficaz | Terminología precisa y estructuras complejas (*"mitigate read latency"*) |
-| **C2** | Maestría | Dicción idiomática impecable y precisión conceptual total |
+**Códigos de respuesta:** `200` éxito · `400` formato/archivo vacío · `401` token inválido (WS `1008`) · `413` audio > 5 MB · `422` audio > 60 s, sin habla o escenario inválido · `429` cola ASR saturada (> 10 s) · `502` fallo de Groq LLM · `503` ASR no inicializado · `504` timeout de etapa.
 
 ---
 
-## Pruebas y Benchmarks
+## 6. Pruebas y Benchmarks
 
-```bash
-pytest -v                                   # Suite con dobles de prueba: sin red, sin modelos
+```powershell
+pytest -v                                   # 72 pruebas unitarias e integración (< 2 s, sin red ni modelos)
 python tests/benchmark_thesis.py wer     --audio-dir benchmark_data/audio
 python tests/benchmark_thesis.py rag     --queries benchmark_data/queries.json --ks 3 5
 python tests/benchmark_thesis.py latency --audio benchmark_data/audio/sample.wav --runs 10
 ```
 
-Objetivos de la tesis: **WER < 12 %**, **Recall@3 ≥ 85 %**, **latencia total < 2.5 s**.
+Metas cuantitativas de la tesis: **WER < 12 %**, **Recall@3 ≥ 85 %**, **latencia objetivo < 2.5 s** (documentando el perfil de hardware CPU/GPU evaluado).
 
 ---
 
-## Despliegue en Producción
+## 7. Despliegue a Producción
 
-Consulte la guía paso a paso en [`GUIA_DESPLIEGUE_PRODUCCION.md`](GUIA_DESPLIEGUE_PRODUCCION.md).
+Consulte la guía actualizada con las rutas de despliegue local con Cloudflare Tunnel ($0) y producción 24/7 en Docker/VPS en [`GUIA_DESPLIEGUE_PRODUCCION.md`](GUIA_DESPLIEGUE_PRODUCCION.md).

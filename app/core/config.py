@@ -119,6 +119,12 @@ class Settings(BaseSettings):
         description="Quantization compute type (int8/float16/float32)",
     )
     ASR_CPU_THREADS: int = Field(default=4, ge=1, description="CTranslate2 CPU threads")
+    ASR_BEAM_SIZE: int = Field(
+        default=1,
+        ge=1,
+        le=10,
+        description="Whisper decoding beam size (1 = fast greedy decoding for CPU latency)",
+    )
     ASR_INITIAL_PROMPT: str = Field(
         default=(
             "Technical software engineering discussion covering PyTorch, Kubernetes, "
@@ -149,12 +155,12 @@ class Settings(BaseSettings):
         description="Maximum wait time in seconds to acquire the ASR semaphore before HTTP 429",
     )
     ASR_TIMEOUT_SECONDS: float = Field(
-        default=25.0,
+        default=90.0,
         gt=0.0,
-        description="Maximum execution time in seconds for the ASR transcription stage",
+        description="Maximum execution time in seconds for the ASR transcription stage on CPU",
     )
     RAG_TIMEOUT_SECONDS: float = Field(
-        default=5.0,
+        default=15.0,
         gt=0.0,
         description="Maximum execution time in seconds for the RAG retrieval stage",
     )

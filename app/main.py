@@ -11,13 +11,18 @@ from contextlib import asynccontextmanager
 from typing import AsyncGenerator, Dict
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 
 from app.api.v1.endpoints.health import get_health_status
 from app.api.v1.router import api_v1_router
 from app.core.config import get_settings
 from app.core.logging import logger
-from app.core.openapi_docs import OPENAPI_TAGS, build_openapi_description
+from app.core.openapi_docs import (
+    OPENAPI_TAGS,
+    build_openapi_description,
+    build_oracle_docs_html,
+    build_redoc_html,
+)
 from app.services.asr_service import get_asr_service
 from app.services.corpus_sync import ensure_corpus_available
 from app.services.llm_service import get_llm_service
@@ -78,10 +83,29 @@ def create_application() -> FastAPI:
         description=build_openapi_description(settings.DESCRIPTION),
         openapi_tags=OPENAPI_TAGS,
         lifespan=lifespan,
-        docs_url="/docs",
-        redoc_url="/redoc",
+        docs_url=None,
+        redoc_url=None,
         openapi_url="/openapi.json",
     )
+
+    @app.get("/docs", include_in_schema=False, response_class=HTMLResponse)
+    async def custom_api_docs_html() -> HTMLResponse:
+        return HTMLResponse(
+            content=build_oracle_docs_html(
+                project_name=settings.PROJECT_NAME,
+                version=settings.VERSION,
+                description=settings.DESCRIPTION,
+            )
+        )
+
+    @app.get("/redoc", include_in_schema=False, response_class=HTMLResponse)
+    async def custom_redoc_html() -> HTMLResponse:
+        return HTMLResponse(
+            content=build_redoc_html(
+                project_name=settings.PROJECT_NAME,
+                openapi_url="/openapi.json",
+            )
+        )
 
     # 1. CORS Middleware (credentials are only valid with explicit origins, not "*")
     app.add_middleware(

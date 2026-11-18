@@ -28,9 +28,10 @@ def test_defaults_match_specification(monkeypatch):
     assert settings.MAX_AUDIO_BYTES == 5 * 1024 * 1024
     assert settings.MAX_AUDIO_SECONDS == 60.0
     assert settings.ASR_MAX_CONCURRENCY == 1
+    assert settings.ASR_BEAM_SIZE == 1
     assert settings.ASR_QUEUE_TIMEOUT_SECONDS == 10.0
-    assert settings.ASR_TIMEOUT_SECONDS == 25.0
-    assert settings.RAG_TIMEOUT_SECONDS == 5.0
+    assert settings.ASR_TIMEOUT_SECONDS == 90.0
+    assert settings.RAG_TIMEOUT_SECONDS == 15.0
     assert settings.LLM_TIMEOUT_SECONDS == 30.0
 
 

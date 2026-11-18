@@ -50,6 +50,30 @@ class ASRCancelledError(RuntimeError):
     """Raised when an in-flight ASR transcription is cooperatively cancelled between segments."""
 
 
+def _patch_pyav_metadata_errors() -> None:
+    """Compat patch for faster-whisper 1.2.x with PyAV 19+ where metadata_errors was removed."""
+    try:
+        import av  # type: ignore
+    except ImportError:
+        return
+
+    orig_open = getattr(av, "open", None)
+    if orig_open is None or getattr(orig_open, "_tt_compat_patched", False):
+        return
+
+    def _compat_open(*args: Any, **kwargs: Any) -> Any:
+        try:
+            return orig_open(*args, **kwargs)
+        except TypeError as err:
+            if "metadata_errors" in kwargs and "metadata_errors" in str(err):
+                clean_kwargs = {k: v for k, v in kwargs.items() if k != "metadata_errors"}
+                return orig_open(*args, **clean_kwargs)
+            raise
+
+    _compat_open._tt_compat_patched = True  # type: ignore[attr-defined]
+    av.open = _compat_open
+
+
 def pcm16_to_float32(
     pcm_bytes: Union[bytes, bytearray, memoryview], sample_rate: int = TARGET_SAMPLE_RATE
 ) -> np.ndarray:
@@ -218,6 +242,7 @@ class ASRService:
             )
 
         settings = getattr(self, "settings", None) or get_settings()
+        _patch_pyav_metadata_errors()
         max_audio_bytes = int(getattr(self, "max_audio_bytes", None) or settings.MAX_AUDIO_BYTES)
         max_audio_seconds = float(
             getattr(self, "max_audio_seconds", None) or settings.MAX_AUDIO_SECONDS
@@ -257,11 +282,12 @@ class ASRService:
                 if cancel_event is not None and cancel_event.is_set():
                     raise ASRCancelledError("ASR transcription cancelled while waiting for model lock.")
 
-                logger.info(f"Transcribing audio stream ({payload_desc})...")
+                beam_size = max(1, int(getattr(self, "beam_size", None) or settings.ASR_BEAM_SIZE))
+                logger.info(f"Transcribing audio stream ({payload_desc}, beam_size={beam_size})...")
                 segments, info = self.model.transcribe(
                     audio_source,
                     language="en",
-                    beam_size=5,
+                    beam_size=beam_size,
                     vad_filter=True,
                     vad_parameters=dict(min_silence_duration_ms=500),
                     initial_prompt=getattr(self, "initial_prompt", None) or None,

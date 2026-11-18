@@ -313,6 +313,16 @@ def test_interactive_ui_console_and_openapi_guide(client):
     assert "system_design_interview" in html
     assert "devops_ci_cd" in html
     assert "custom_scenario" in html
+    assert 'rel="icon"' in html
+    assert "themeToggleBtn" in html
+    assert '[data-theme="dark"]' in html
+
+    docs_res = client.get("/docs")
+    assert docs_res.status_code == 200
+    assert "--ora-header" in docs_res.text
+    assert "data:image/svg+xml" in docs_res.text
+    assert "swagger-ui" not in docs_res.text
+    assert "POST /api/v1/evaluate/voice" in docs_res.text
 
     openapi_res = client.get("/openapi.json")
     assert openapi_res.status_code == 200
@@ -321,3 +331,11 @@ def test_interactive_ui_console_and_openapi_guide(client):
     assert "Postman" in info_desc
     assert "/api/v1/ws/practice" in info_desc
     assert "devops_ci_cd" in info_desc
+    # Ensure no H2 backticks or horizontal rules break ReDoc section parsing
+    assert "\n---\n" not in info_desc
+
+    redoc_res = client.get("/redoc")
+    assert redoc_res.status_code == 200
+    assert "redoc@2.1.5/bundles/redoc.standalone.js" in redoc_res.text
+    assert "redoc@next" not in redoc_res.text
+    assert "#1b4b72" in redoc_res.text

@@ -196,3 +196,22 @@ async def test_async_semaphore_queue_timeout():
     gate.set()
     result1 = await task1
     assert result1.transcription == "done"
+
+
+def test_pyav_19_metadata_errors_compat_patch():
+    import io
+    import wave
+    import faster_whisper.audio as fwa
+    from app.services.asr_service import _patch_pyav_metadata_errors
+
+    _patch_pyav_metadata_errors()
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(16000)
+        w.writeframes(b"\x00\x00" * 1600)
+    buf.seek(0)
+    arr = fwa.decode_audio(buf)
+    assert arr.shape == (1600,)
+    assert arr.dtype == np.float32

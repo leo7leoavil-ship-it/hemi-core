@@ -12,6 +12,7 @@ from typing import Any, Dict, List
 from fastapi import APIRouter
 from fastapi.responses import HTMLResponse
 
+from app.core.openapi_docs import FAVICON_DATA_URI
 from app.schemas.request_schemas import (
     CUSTOM_SCENARIO_MAX_LEN,
     CUSTOM_SCENARIO_MIN_LEN,
@@ -44,78 +45,151 @@ def build_testing_console_html() -> str:
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Tech Tutor Engine · Consola Interactiva y Guía de API</title>
+  <link rel="icon" type="image/svg+xml" href="{FAVICON_DATA_URI}" />
   <style>
-    :root {{
-      --bg: #0f172a;
-      --panel: #1e293b;
-      --panel-alt: #0b1120;
-      --border: #334155;
-      --text: #f8fafc;
-      --muted: #94a3b8;
-      --primary: #3b82f6;
-      --primary-hover: #2563eb;
-      --success: #10b981;
-      --warning: #f59e0b;
-      --danger: #ef4444;
-      --code-bg: #020617;
+    :root, [data-theme="light"] {{
+      --bg: #f4f6f8;
+      --panel: #ffffff;
+      --panel-alt: #f8fafc;
+      --border: #d5dce4;
+      --text: #161b22;
+      --label: #334155;
+      --muted: #52606d;
+      --header-bg: #1d2633;
+      --header-text: #f8fafc;
+      --header-sub: #cbd5e1;
+      --primary: #1b4b72;
+      --primary-hover: #143957;
+      --accent-text: #1b4b72;
+      --secondary-btn: #475569;
+      --secondary-btn-hover: #334155;
+      --success: #1f5c4d;
+      --success-hover: #17473b;
+      --success-text: #166534;
+      --warning-text: #92400e;
+      --danger: #991b1b;
+      --danger-hover: #7f1d1d;
+      --danger-text: #991b1b;
+      --badge-bg: #e9eef4;
+      --badge-text: #334155;
+      --code-bg: #1e293b;
+      --code-text: #f1f5f9;
+      --inline-code-bg: #edf1f5;
+      --inline-code-text: #1e293b;
+    }}
+    [data-theme="dark"] {{
+      --bg: #0d1117;
+      --panel: #161b22;
+      --panel-alt: #0d1117;
+      --border: #30363d;
+      --text: #e6edf3;
+      --label: #cbd5e1;
+      --muted: #8b949e;
+      --header-bg: #161b22;
+      --header-text: #f0f6fc;
+      --header-sub: #9eaab6;
+      --primary: #2b5c8f;
+      --primary-hover: #224a73;
+      --accent-text: #79b8ff;
+      --secondary-btn: #30363d;
+      --secondary-btn-hover: #484f58;
+      --success: #236452;
+      --success-hover: #1b4f41;
+      --success-text: #56d364;
+      --warning-text: #e3b341;
+      --danger: #8e2424;
+      --danger-hover: #701c1c;
+      --danger-text: #f85149;
+      --badge-bg: #21262d;
+      --badge-text: #c9d1d9;
+      --code-bg: #0b0f14;
+      --code-text: #e6edf3;
+      --inline-code-bg: #21262d;
+      --inline-code-text: #e6edf3;
     }}
     * {{ box-sizing: border-box; }}
-    body {{
+    html, body {{
       margin: 0;
       padding: 0;
+      width: 100%;
+      max-width: 100%;
+      overflow-x: hidden;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
       background: var(--bg);
       color: var(--text);
       line-height: 1.5;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }}
+    code {{
+      background: var(--inline-code-bg);
+      color: var(--inline-code-text);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.9em;
     }}
     .container {{
-      max-width: 1240px;
+      width: 100%;
+      max-width: 1180px;
       margin: 0 auto;
-      padding: 20px;
+      padding: clamp(12px, 2.5vw, 24px);
     }}
     .header {{
-      background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 60%, #0284c7 100%);
-      border-radius: 12px;
-      padding: 22px 26px;
+      background: var(--header-bg);
+      border: 1px solid var(--border);
+      border-bottom: 3px solid var(--primary);
+      border-radius: 8px;
+      padding: clamp(16px, 2.5vw, 24px);
       margin-bottom: 18px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       flex-wrap: wrap;
       gap: 14px;
-      box-shadow: 0 10px 25px rgba(2, 6, 23, 0.45);
     }}
     .header h1 {{
       margin: 0;
-      font-size: 24px;
+      color: var(--header-text);
+      font-size: clamp(18px, 2.2vw, 23px);
       font-weight: 700;
+      letter-spacing: -0.01em;
     }}
     .header p {{
       margin: 4px 0 0 0;
-      color: #e0f2fe;
-      font-size: 14px;
+      color: var(--header-sub);
+      font-size: clamp(12.5px, 1.4vw, 13.5px);
     }}
-    .header-links a {{
-      display: inline-block;
-      background: rgba(15, 23, 42, 0.35);
-      color: #fff;
+    .header-links {{
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }}
+    .header-links a, .theme-toggle {{
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--header-text);
       text-decoration: none;
-      padding: 8px 14px;
-      border-radius: 8px;
+      padding: 7px 13px;
+      border-radius: 6px;
       font-size: 13px;
       font-weight: 600;
-      border: 1px solid rgba(255, 255, 255, 0.25);
-      margin-left: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      cursor: pointer;
     }}
-    .header-links a:hover {{
-      background: rgba(15, 23, 42, 0.6);
+    .header-links a:hover, .theme-toggle:hover {{
+      background: rgba(255, 255, 255, 0.16);
     }}
     .card {{
       background: var(--panel);
       border: 1px solid var(--border);
       border-radius: 12px;
-      padding: 18px 20px;
+      padding: clamp(14px, 2vw, 20px);
       margin-bottom: 18px;
+      width: 100%;
+      min-width: 0;
+      max-width: 100%;
     }}
     .card-title {{
       font-size: 16px;
@@ -123,21 +197,39 @@ def build_testing_console_html() -> str:
       margin: 0 0 10px 0;
       display: flex;
       align-items: center;
+      flex-wrap: wrap;
       gap: 8px;
     }}
     .grid-2 {{
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
       gap: 18px;
+      width: 100%;
     }}
-    @media (max-width: 900px) {{
-      .grid-2 {{ grid-template-columns: 1fr; }}
+    .grid-2 > * {{
+      min-width: 0;
+      max-width: 100%;
+    }}
+    .stack-layout {{
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      width: 100%;
+    }}
+    .feedback-grid {{
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+      gap: 12px;
+      margin-top: 10px;
+    }}
+    .feedback-grid > * {{
+      min-width: 0;
     }}
     label {{
       display: block;
       font-size: 13px;
       font-weight: 600;
-      color: #cbd5e1;
+      color: var(--label);
       margin-bottom: 6px;
     }}
     input[type="text"], input[type="password"], input[type="number"], select, textarea {{
@@ -146,7 +238,7 @@ def build_testing_console_html() -> str:
       border: 1px solid var(--border);
       color: var(--text);
       padding: 10px 12px;
-      border-radius: 8px;
+      border-radius: 6px;
       font-size: 14px;
       outline: none;
     }}
@@ -163,21 +255,21 @@ def build_testing_console_html() -> str:
       background: var(--primary);
       color: #fff;
       border: none;
-      padding: 10px 16px;
-      border-radius: 8px;
-      font-size: 14px;
+      padding: 9px 15px;
+      border-radius: 6px;
+      font-size: 13.5px;
       font-weight: 600;
       cursor: pointer;
       transition: background 0.15s;
     }}
     button:hover {{ background: var(--primary-hover); }}
     button:disabled {{ opacity: 0.5; cursor: not-allowed; }}
-    button.btn-secondary {{ background: #475569; }}
-    button.btn-secondary:hover {{ background: #334155; }}
+    button.btn-secondary {{ background: var(--secondary-btn); }}
+    button.btn-secondary:hover {{ background: var(--secondary-btn-hover); }}
     button.btn-danger {{ background: var(--danger); }}
-    button.btn-danger:hover {{ background: #dc2626; }}
+    button.btn-danger:hover {{ background: var(--danger-hover); }}
     button.btn-success {{ background: var(--success); }}
-    button.btn-success:hover {{ background: #059669; }}
+    button.btn-success:hover {{ background: var(--success-hover); }}
     .badge {{
       display: inline-flex;
       align-items: center;
@@ -186,12 +278,13 @@ def build_testing_console_html() -> str:
       border-radius: 999px;
       font-size: 12px;
       font-weight: 600;
-      background: #334155;
-      color: #e2e8f0;
+      background: var(--badge-bg);
+      color: var(--badge-text);
+      border: 1px solid var(--border);
     }}
-    .badge.ok {{ background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid #059669; }}
-    .badge.err {{ background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid #dc2626; }}
-    .badge.warn {{ background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid #d97706; }}
+    .badge.ok {{ background: rgba(31, 92, 77, 0.14); color: var(--success-text); border: 1px solid var(--success); }}
+    .badge.err {{ background: rgba(153, 27, 27, 0.14); color: var(--danger-text); border: 1px solid var(--danger); }}
+    .badge.warn {{ background: rgba(180, 83, 9, 0.14); color: var(--warning-text); border: 1px solid #b45309; }}
     .help-text {{
       font-size: 12.5px;
       color: var(--muted);
@@ -223,7 +316,7 @@ def build_testing_console_html() -> str:
     .tab-panel.active {{ display: block; }}
     .metrics-grid {{
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr));
       gap: 10px;
       margin-bottom: 14px;
     }}
@@ -233,11 +326,12 @@ def build_testing_console_html() -> str:
       border-radius: 8px;
       padding: 10px 12px;
       text-align: center;
+      min-width: 0;
     }}
     .metric-box .val {{
       font-size: 20px;
       font-weight: 700;
-      color: #60a5fa;
+      color: var(--accent-text);
     }}
     .metric-box .lbl {{
       font-size: 11.5px;
@@ -249,11 +343,14 @@ def build_testing_console_html() -> str:
       border-radius: 6px;
       padding: 12px 14px;
       margin-bottom: 10px;
+      min-width: 0;
+      overflow-wrap: anywhere;
+      word-break: break-word;
     }}
     .feedback-item h4 {{
       margin: 0 0 6px 0;
       font-size: 14px;
-      color: #93c5fd;
+      color: var(--accent-text);
     }}
     .feedback-item p {{
       margin: 4px 0;
@@ -262,11 +359,15 @@ def build_testing_console_html() -> str:
     pre {{
       background: var(--code-bg);
       border: 1px solid var(--border);
-      border-radius: 8px;
+      border-radius: 6px;
       padding: 12px;
+      max-width: 100%;
       overflow-x: auto;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      word-break: break-word;
       font-size: 12.5px;
-      color: #e2e8f0;
+      color: var(--code-text);
       margin: 8px 0 0 0;
     }}
     .stepper {{
@@ -286,13 +387,13 @@ def build_testing_console_html() -> str:
     }}
     .step.active {{
       border-color: var(--primary);
-      background: rgba(59, 130, 246, 0.2);
-      color: #93c5fd;
+      background: rgba(27, 75, 114, 0.14);
+      color: var(--accent-text);
     }}
     .step.done {{
       border-color: var(--success);
-      background: rgba(16, 185, 129, 0.15);
-      color: #34d399;
+      background: rgba(31, 92, 77, 0.14);
+      color: var(--success-text);
     }}
   </style>
 </head>
@@ -300,13 +401,13 @@ def build_testing_console_html() -> str:
   <div class="container">
     <div class="header">
       <div>
-        <h1>🎙️ Tech Tutor Engine · Consola de Pruebas y Guía de Integración</h1>
-        <p>Motor MaaS de Evaluación de Inglés Técnico (faster-whisper int8 + ChromaDB 213k + Groq gpt-oss-120b)</p>
+        <h1>Tech Tutor Engine · Consola de Pruebas</h1>
+        <p>Motor MaaS de Evaluación de Inglés Técnico (faster-whisper int8 + ChromaDB + Groq gpt-oss-120b)</p>
       </div>
       <div class="header-links">
-        <a href="/docs" target="_blank">📘 Swagger UI (/docs)</a>
+        <button type="button" class="theme-toggle" id="themeToggleBtn">🌙 Tema Oscuro</button>
+        <a href="/docs" target="_blank">📘 Documentación API (/docs)</a>
         <a href="/redoc" target="_blank">📄 ReDoc (/redoc)</a>
-        <a href="/openapi.json" target="_blank">{{}} OpenAPI JSON</a>
       </div>
     </div>
 
@@ -340,7 +441,7 @@ def build_testing_console_html() -> str:
         <div id="customScenarioBox" style="display:none; margin-top: 12px;">
           <label for="customScenarioInput">
             Describe tu escenario personalizado (<code>custom_scenario</code>, {CUSTOM_SCENARIO_MIN_LEN}–{CUSTOM_SCENARIO_MAX_LEN} caracteres imprimibles):
-            <span id="customCharCount" style="float:right; color:#93c5fd;">0 / {CUSTOM_SCENARIO_MAX_LEN}</span>
+            <span id="customCharCount" style="float:right; color:var(--accent-text);">0 / {CUSTOM_SCENARIO_MAX_LEN}</span>
           </label>
           <input
             type="text"
@@ -348,7 +449,7 @@ def build_testing_console_html() -> str:
             maxlength="{CUSTOM_SCENARIO_MAX_LEN}"
             placeholder="Ej: Kubernetes cluster DNS debugging and CNI packet loss investigation"
           />
-          <div class="help-text" id="customScenarioError" style="color:#f87171; display:none;"></div>
+          <div class="help-text" id="customScenarioError" style="color:var(--danger-text); display:none;"></div>
         </div>
       </div>
     </div>
@@ -364,7 +465,7 @@ def build_testing_console_html() -> str:
 
     <!-- TAB 1: VOICE REST -->
     <div class="tab-panel active" id="tab-voice">
-      <div class="grid-2">
+      <div class="stack-layout">
         <div class="card">
           <div class="card-title">🎙️ Entrada de Audio (Límite: 5 MB / 60 segundos)</div>
           <p class="help-text" style="margin-top:0;">
@@ -377,24 +478,29 @@ def build_testing_console_html() -> str:
           </div>
           <audio id="audioPreview" controls style="width:100%; margin-bottom:12px; display:none;"></audio>
 
-          <label for="audioFileInput">O sube un archivo de audio desde tu equipo:</label>
-          <input type="file" id="audioFileInput" accept=".wav,.mp3,.webm,.ogg,.m4a,audio/*" style="margin-bottom: 12px;" />
-
-          <label for="expectedTranscriptVoice">Texto de referencia opcional (<code>expected_transcript</code> para calcular WER y CER):</label>
-          <input type="text" id="expectedTranscriptVoice" placeholder="Opcional: escribe el texto exacto leído para medir Word Error Rate..." />
+          <div class="grid-2">
+            <div>
+              <label for="audioFileInput">O sube un archivo de audio desde tu equipo:</label>
+              <input type="file" id="audioFileInput" accept=".wav,.mp3,.webm,.ogg,.m4a,audio/*" />
+            </div>
+            <div>
+              <label for="expectedTranscriptVoice">Texto de referencia opcional (<code>expected_transcript</code> para WER/CER):</label>
+              <input type="text" id="expectedTranscriptVoice" placeholder="Opcional: texto leído para calcular Word Error Rate..." />
+            </div>
+          </div>
 
           <div class="row-flex" style="margin-top: 16px;">
             <button type="button" id="submitVoiceBtn">🚀 Evaluar Audio por REST (/api/v1/evaluate/voice)</button>
             <span id="voiceSpinner" class="help-text"></span>
           </div>
 
-          <div style="margin-top: 16px;">
-            <label>Comando cURL equivalente (listo para copiar):</label>
+          <details style="margin-top: 14px;">
+            <summary style="cursor:pointer; font-size:13px; color:var(--accent-text);">Ver comando cURL equivalente para terminal / Postman</summary>
             <pre id="curlVoicePreview"></pre>
-          </div>
+          </details>
         </div>
 
-        <div class="card">
+        <div class="card" id="voiceResultCard">
           <div class="card-title">📊 Resultado de Evaluación Multimodal</div>
           <div id="voiceResultContainer">
             <p class="help-text">Graba o sube un audio y presiona <strong>Evaluar Audio por REST</strong> para ver la transcripción, nivel MCER/CEFR, métricas y sugerencias basadas en el corpus RAG.</p>
@@ -405,7 +511,7 @@ def build_testing_console_html() -> str:
 
     <!-- TAB 2: WEBSOCKET -->
     <div class="tab-panel" id="tab-ws">
-      <div class="grid-2">
+      <div class="stack-layout">
         <div class="card">
           <div class="card-title">⚡ Streaming Full-Duplex (<code>WS /api/v1/ws/practice</code>)</div>
           <p class="help-text" style="margin-top:0;">
@@ -430,10 +536,10 @@ def build_testing_console_html() -> str:
           </div>
 
           <label>Bitácora de Tramas WebSocket en Vivo:</label>
-          <pre id="wsLog" style="height: 220px; overflow-y: auto;">Sin conexión activa.</pre>
+          <pre id="wsLog" style="max-height: 180px; overflow-y: auto;">Sin conexión activa.</pre>
         </div>
 
-        <div class="card">
+        <div class="card" id="wsResultCard">
           <div class="card-title">📊 Resultado de Sesión WebSocket</div>
           <div id="wsResultContainer">
             <p class="help-text">Conecta el WebSocket, graba tu respuesta técnica y presiona <strong>Finalizar y Evaluar (end)</strong>.</p>
@@ -444,22 +550,22 @@ def build_testing_console_html() -> str:
 
     <!-- TAB 3: TEXT REST -->
     <div class="tab-panel" id="tab-text">
-      <div class="grid-2">
+      <div class="stack-layout">
         <div class="card">
           <div class="card-title">📝 Evaluar Respuesta Escrita (<code>POST /api/v1/evaluate/text</code>)</div>
           <label for="candidateTextInput">Respuesta del candidato en inglés técnico (2–10,000 caracteres):</label>
-          <textarea id="candidateTextInput" rows="5">We put a Redis cache in front of the primary database to make reads faster and we split the tables across servers so writes do not bottleneck.</textarea>
+          <textarea id="candidateTextInput" rows="4">We put a Redis cache in front of the primary database to make reads faster and we split the tables across servers so writes do not bottleneck.</textarea>
           <div class="row-flex" style="margin-top: 12px;">
             <button type="button" id="submitTextBtn">🚀 Evaluar Texto (/api/v1/evaluate/text)</button>
             <span id="textSpinner" class="help-text"></span>
           </div>
-          <div style="margin-top: 16px;">
-            <label>Comando cURL / Body JSON para Postman:</label>
+          <details style="margin-top: 14px;">
+            <summary style="cursor:pointer; font-size:13px; color:var(--accent-text);">Ver comando cURL / Body JSON para Postman</summary>
             <pre id="curlTextPreview"></pre>
-          </div>
+          </details>
         </div>
 
-        <div class="card">
+        <div class="card" id="textResultCard">
           <div class="card-title">📊 Resultado de Evaluación de Texto</div>
           <div id="textResultContainer">
             <p class="help-text">Presiona <strong>Evaluar Texto</strong> para ejecutar RAG + Groq LLM bajo el escenario seleccionado.</p>
@@ -470,14 +576,22 @@ def build_testing_console_html() -> str:
 
     <!-- TAB 4: RAG QUERY -->
     <div class="tab-panel" id="tab-rag">
-      <div class="grid-2">
+      <div class="stack-layout">
         <div class="card">
           <div class="card-title">🔍 Búsqueda Semántica Directa en ChromaDB (<code>POST /api/v1/query</code>)</div>
-          <label for="ragQueryInput">Consulta técnica en inglés (2–2,000 caracteres):</label>
-          <input type="text" id="ragQueryInput" value="How does horizontal database sharding mitigate write bottlenecks?" style="margin-bottom: 12px;" />
-          <label for="ragTopKInput">Número de fragmentos a recuperar (<code>top_k</code>, 1–20):</label>
-          <input type="number" id="ragTopKInput" value="3" min="1" max="20" style="margin-bottom: 12px;" />
-          <button type="button" id="submitRagBtn">🔍 Consultar Corpus Vectorial</button>
+          <div class="grid-2">
+            <div>
+              <label for="ragQueryInput">Consulta técnica en inglés (2–2,000 caracteres):</label>
+              <input type="text" id="ragQueryInput" value="How does horizontal database sharding mitigate write bottlenecks?" />
+            </div>
+            <div>
+              <label for="ragTopKInput">Número de fragmentos a recuperar (<code>top_k</code>, 1–20):</label>
+              <input type="number" id="ragTopKInput" value="3" min="1" max="20" />
+            </div>
+          </div>
+          <div style="margin-top: 12px;">
+            <button type="button" id="submitRagBtn">🔍 Consultar Corpus Vectorial</button>
+          </div>
         </div>
 
         <div class="card">
@@ -493,7 +607,7 @@ def build_testing_console_html() -> str:
     <div class="tab-panel" id="tab-guide">
       <div class="card">
         <div class="card-title">📘 Guía Completa para Consumir el Servicio desde Postman, cURL o Sistemas Externos</div>
-        <p class="help-text" style="font-size:14px; color:#e2e8f0;">
+        <p class="help-text" style="font-size:14px; color:var(--text);">
           Sigue estos pasos para integrar cualquier cliente externo con <strong>Tech Tutor Engine</strong>:
         </p>
         <h4>1. Autenticación Obligatoria (Fail-Closed)</h4>
@@ -531,6 +645,20 @@ def build_testing_console_html() -> str:
     const SCENARIOS = {scenarios_json};
     const MIN_CUSTOM = {CUSTOM_SCENARIO_MIN_LEN};
     const MAX_CUSTOM = {CUSTOM_SCENARIO_MAX_LEN};
+
+    // Corporate Light / Dark theme switcher
+    const themeToggleBtn = document.getElementById('themeToggleBtn');
+    function applyTheme(theme) {{
+      const t = theme === 'dark' ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', t);
+      localStorage.setItem('tt_ui_theme', t);
+      themeToggleBtn.textContent = t === 'dark' ? '☀️ Tema Claro' : '🌙 Tema Oscuro';
+    }}
+    applyTheme(localStorage.getItem('tt_ui_theme') || 'light');
+    themeToggleBtn.addEventListener('click', () => {{
+      const current = document.documentElement.getAttribute('data-theme');
+      applyTheme(current === 'dark' ? 'light' : 'dark');
+    }});
 
     const tokenInput = document.getElementById('apiTokenInput');
     const scenarioSelect = document.getElementById('scenarioSelect');
@@ -667,10 +795,30 @@ def build_testing_console_html() -> str:
       }}
     }});
 
-    function renderEvaluationResult(containerId, data) {{
+    async function parseApiJson(res) {{
+      const rawText = await res.text();
+      try {{
+        return JSON.parse(rawText);
+      }} catch (_) {{
+        return {{
+          status: 'error',
+          http_status: res.status,
+          detail: `HTTP ${{res.status}} (${{res.statusText || 'Respuesta no-JSON del servidor/proxy'}}): ${{rawText.replace(/<[^>]+>/g, ' ').replace(/\\s+/g, ' ').trim().slice(0, 280)}}`,
+        }};
+      }}
+    }}
+
+    function renderEvaluationResult(containerId, data, httpStatus) {{
       const el = document.getElementById(containerId);
       if (!data || !data.evaluation_core) {{
-        el.innerHTML = `<div class="badge err">Error</div><pre>${{JSON.stringify(data, null, 2)}}</pre>`;
+        const detailMsg = data && data.detail ? (typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail, null, 2)) : JSON.stringify(data, null, 2);
+        el.innerHTML = `
+          <div class="feedback-item" style="border-left-color: var(--danger);">
+            <h4 style="color: var(--danger-text);">⚠️ Error en la petición (HTTP ${{httpStatus || data?.http_status || 'Error'}})</h4>
+            <p>${{detailMsg}}</p>
+          </div>
+        `;
+        el.scrollIntoView({{ behavior: 'smooth', block: 'nearest' }});
         return;
       }}
       const c = data.evaluation_core;
@@ -689,7 +837,7 @@ def build_testing_console_html() -> str:
         html += `
           <div class="card" style="background:var(--panel-alt); padding:12px; margin-bottom:12px;">
             <strong>🎙️ Transcripción Whisper (${{asr.speech_duration_seconds}}s · ${{asr.words_per_minute}} WPM · Confianza ${{(asr.confidence_score * 100).toFixed(1)}}%${{asr.wer_score !== null && asr.wer_score !== undefined ? ` · WER: ${{asr.wer_score}}` : ''}}):</strong>
-            <p style="margin:6px 0 0 0; color:#e0f2fe;">"${{asr.transcription}}"</p>
+            <p style="margin:6px 0 0 0; color:var(--text);">"${{asr.transcription}}"</p>
           </div>
         `;
       }}
@@ -697,21 +845,23 @@ def build_testing_console_html() -> str:
       html += `<p style="font-size:13px;"><strong>Términos técnicos detectados:</strong> <code>${{terms}}</code></p>`;
 
       if (data.feedback_details && data.feedback_details.length > 0) {{
-        html += `<h4 style="margin:12px 0 8px 0;">Sugerencias Pedagógicas Grounded (RAG):</h4>`;
+        html += `<h4 style="margin:12px 0 8px 0;">Sugerencias Pedagógicas Grounded (RAG):</h4><div class="feedback-grid">`;
         data.feedback_details.forEach((f, idx) => {{
           html += `
             <div class="feedback-item">
               <h4>${{idx + 1}}. [${{f.type}}]</h4>
               <p><strong>Original:</strong> <code>${{f.original_phrase}}</code></p>
-              <p><strong>Sugerido:</strong> <strong style="color:#34d399;">${{f.suggested_phrase}}</strong></p>
+              <p><strong>Sugerido:</strong> <strong style="color:var(--success-text);">${{f.suggested_phrase}}</strong></p>
               <p><strong>Explicación:</strong> ${{f.explanation}}</p>
               <p class="help-text"><strong>Fuente RAG:</strong> ${{f.rag_source_context}}</p>
             </div>
           `;
         }});
+        html += `</div>`;
       }}
-      html += `<details style="margin-top:10px;"><summary style="cursor:pointer; font-size:13px; color:#93c5fd;">Ver JSON completo</summary><pre>${{JSON.stringify(data, null, 2)}}</pre></details>`;
+      html += `<details style="margin-top:10px;"><summary style="cursor:pointer; font-size:13px; color:var(--accent-text);">Ver JSON completo</summary><pre>${{JSON.stringify(data, null, 2)}}</pre></details>`;
       el.innerHTML = html;
+      el.scrollIntoView({{ behavior: 'smooth', block: 'nearest' }});
     }}
 
     // Microphone Recording for REST Voice Tab
@@ -799,9 +949,9 @@ def build_testing_console_html() -> str:
           headers: getAuthHeaders(),
           body: formData,
         }});
-        const data = await res.json();
+        const data = await parseApiJson(res);
         spinner.textContent = `HTTP ${{res.status}}`;
-        renderEvaluationResult('voiceResultContainer', data);
+        renderEvaluationResult('voiceResultContainer', data, res.status);
       }} catch (err) {{
         spinner.textContent = 'Error de red';
         document.getElementById('voiceResultContainer').innerHTML = `<pre>${{err.message}}</pre>`;
@@ -826,9 +976,9 @@ def build_testing_console_html() -> str:
           headers: {{ ...getAuthHeaders(), 'Content-Type': 'application/json' }},
           body: JSON.stringify(payload),
         }});
-        const data = await res.json();
+        const data = await parseApiJson(res);
         spinner.textContent = `HTTP ${{res.status}}`;
-        renderEvaluationResult('textResultContainer', data);
+        renderEvaluationResult('textResultContainer', data, res.status);
       }} catch (err) {{
         spinner.textContent = 'Error de red';
         document.getElementById('textResultContainer').innerHTML = `<pre>${{err.message}}</pre>`;
