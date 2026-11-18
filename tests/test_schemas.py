@@ -120,11 +120,57 @@ def test_architectural_alignment_feedback_type_and_alias():
 
 
 def test_scenarios_and_legacy_aliases():
-    from app.schemas.request_schemas import TargetScenario
+    from app.schemas.request_schemas import (
+        SCENARIO_DESCRIPTIONS,
+        SCENARIO_TITLES,
+        TargetScenario,
+        TextEvaluationRequest,
+        resolve_scenario,
+    )
+
+    assert len(TargetScenario) == 10
+    for member in TargetScenario:
+        assert member in SCENARIO_DESCRIPTIONS
+        assert member in SCENARIO_TITLES
 
     assert TargetScenario("code_review") is TargetScenario.CODE_REVIEW
     assert TargetScenario("System Design") is TargetScenario.SYSTEM_DESIGN
     assert TargetScenario("Thesis Defense") is TargetScenario.ARCHITECTURE_PRESENTATION
     assert TargetScenario("Incident-Postmortem") is TargetScenario.INCIDENT_POSTMORTEM
+    assert TargetScenario("daily_standup") is TargetScenario.DAILY_STANDUP
+    assert TargetScenario("technical_debugging") is TargetScenario.TECHNICAL_DEBUGGING
+    assert TargetScenario("devops_ci_cd") is TargetScenario.DEVOPS_CI_CD
+    assert TargetScenario("database_optimization") is TargetScenario.DATABASE_OPTIMIZATION
+    assert TargetScenario("api_design_review") is TargetScenario.API_DESIGN_REVIEW
+    assert TargetScenario("custom") is TargetScenario.CUSTOM
     with pytest.raises(ValueError):
         TargetScenario("cooking")
+
+    # Custom scenario validation rules
+    scen, custom, rag_label, llm_desc = resolve_scenario(
+        "custom", "  Kubernetes CNI packet loss debugging  "
+    )
+    assert scen is TargetScenario.CUSTOM
+    assert custom == "Kubernetes CNI packet loss debugging"
+    assert rag_label == "Kubernetes CNI packet loss debugging"
+    assert "Kubernetes CNI packet loss debugging" in llm_desc
+
+    # Missing or too-short custom_scenario when target_scenario="custom"
+    with pytest.raises(ValueError):
+        resolve_scenario("custom", None)
+    with pytest.raises(ValueError):
+        resolve_scenario("custom", "ab")
+    with pytest.raises(ValueError):
+        resolve_scenario("custom", "line1\nline2")
+
+    # Non-empty custom_scenario forbidden when target_scenario is a preset
+    with pytest.raises(ValueError):
+        resolve_scenario("code_review", "Some custom description")
+
+    req = TextEvaluationRequest(
+        candidate_text="We debugged the ingress controller.",
+        target_scenario="custom",
+        custom_scenario="Ingress controller TLS handshake debugging",
+    )
+    assert req.target_scenario is TargetScenario.CUSTOM
+    assert req.custom_scenario == "Ingress controller TLS handshake debugging"

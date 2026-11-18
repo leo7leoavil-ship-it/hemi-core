@@ -17,10 +17,12 @@ from app.api.v1.endpoints.health import get_health_status
 from app.api.v1.router import api_v1_router
 from app.core.config import get_settings
 from app.core.logging import logger
+from app.core.openapi_docs import OPENAPI_TAGS, build_openapi_description
 from app.services.asr_service import get_asr_service
 from app.services.corpus_sync import ensure_corpus_available
 from app.services.llm_service import get_llm_service
 from app.services.rag_service import get_rag_service
+from app.ui.gradio_app import ui_router
 
 
 @asynccontextmanager
@@ -73,7 +75,8 @@ def create_application() -> FastAPI:
     app = FastAPI(
         title=settings.PROJECT_NAME,
         version=settings.VERSION,
-        description=settings.DESCRIPTION,
+        description=build_openapi_description(settings.DESCRIPTION),
+        openapi_tags=OPENAPI_TAGS,
         lifespan=lifespan,
         docs_url="/docs",
         redoc_url="/redoc",
@@ -111,6 +114,7 @@ def create_application() -> FastAPI:
             "version": settings.VERSION,
             "status": "online",
             "documentation": "/docs",
+            "interactive_console": "/ui",
             "health_check": "/health",
             "api_v1_base": "/api/v1",
             "websocket": "/api/v1/ws/practice",
@@ -119,20 +123,8 @@ def create_application() -> FastAPI:
     # 4. API v1 routers (/query, /evaluate/voice, /evaluate/text, /ws/practice, /health)
     app.include_router(api_v1_router, prefix="/api/v1")
 
-    # 5. Optional Gradio UI sandbox at /ui (disabled by default)
-    if settings.ENABLE_UI:
-        try:
-            import gradio as gr
-            from app.ui.gradio_app import create_gradio_demo
-
-            demo = create_gradio_demo()
-            if demo is not None:
-                logger.info("Mounting Gradio testing sandbox at route '/ui'...")
-                app = gr.mount_gradio_app(app, demo, path="/ui")
-        except ImportError:
-            logger.warning("ENABLE_UI=true but gradio is not installed; skipping /ui.")
-        except Exception as e:
-            logger.error(f"Failed to mount Gradio application at /ui: {e}", exc_info=True)
+    # 5. Zero-dependency Interactive Testing Console at /ui
+    app.include_router(ui_router)
 
     return app
 

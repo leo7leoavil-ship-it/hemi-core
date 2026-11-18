@@ -127,11 +127,36 @@ class Settings(BaseSettings):
         description="Lexical bias prompt that conditions Whisper towards engineering terms",
     )
 
-    # Request limits
+    # Request & Pipeline Concurrency / Timeout Limits
     MAX_AUDIO_BYTES: int = Field(
-        default=25 * 1024 * 1024,
+        default=5 * 1024 * 1024,
         ge=1024,
         description="Maximum accepted audio payload (REST upload or WebSocket buffer)",
+    )
+    MAX_AUDIO_SECONDS: float = Field(
+        default=60.0,
+        gt=0.0,
+        description="Maximum accepted audio duration in seconds",
+    )
+    ASR_MAX_CONCURRENCY: int = Field(
+        default=1,
+        ge=1,
+        description="Maximum concurrent CPU ASR transcriptions",
+    )
+    ASR_QUEUE_TIMEOUT_SECONDS: float = Field(
+        default=10.0,
+        gt=0.0,
+        description="Maximum wait time in seconds to acquire the ASR semaphore before HTTP 429",
+    )
+    ASR_TIMEOUT_SECONDS: float = Field(
+        default=25.0,
+        gt=0.0,
+        description="Maximum execution time in seconds for the ASR transcription stage",
+    )
+    RAG_TIMEOUT_SECONDS: float = Field(
+        default=5.0,
+        gt=0.0,
+        description="Maximum execution time in seconds for the RAG retrieval stage",
     )
 
     # Optional Gradio sandbox (out of the MaaS scope; disabled by default)

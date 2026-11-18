@@ -35,18 +35,6 @@ def build_search_query(text: str, scenario: Optional[str] = None) -> str:
     text = text.strip()
     return f"{scenario}: {text}" if scenario else text
 
-# Lazy / optional imports to allow graceful module loading
-try:
-    import chromadb
-    from chromadb.config import Settings as ChromaSettings
-except ImportError:
-    chromadb = None  # type: ignore
-
-try:
-    from sentence_transformers import SentenceTransformer
-except ImportError:
-    SentenceTransformer = None  # type: ignore
-
 
 class RAGService:
     """Singleton service for vector similarity search over the technical corpus."""
@@ -82,7 +70,12 @@ class RAGService:
             f"Initializing RAG Service at '{self.persist_directory}', collection='{self.collection_name}'"
         )
 
-        # 1. Initialize SentenceTransformer
+        # 1. Initialize SentenceTransformer (lazy import keeps test startup instant)
+        try:
+            from sentence_transformers import SentenceTransformer  # type: ignore
+        except ImportError:
+            SentenceTransformer = None  # type: ignore
+
         if SentenceTransformer is not None:
             try:
                 logger.info(f"Loading SentenceTransformer model: {self.model_name}")
@@ -95,6 +88,11 @@ class RAGService:
             logger.warning("sentence-transformers package not installed yet.")
 
         # 2. Initialize ChromaDB
+        try:
+            import chromadb  # type: ignore
+        except ImportError:
+            chromadb = None  # type: ignore
+
         if chromadb is not None:
             try:
                 self.client = chromadb.PersistentClient(path=self.persist_directory)

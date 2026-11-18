@@ -1,16 +1,23 @@
 """Unit tests for the ASR service (no real Whisper weights are loaded)."""
 
+import asyncio
+import threading
 from types import SimpleNamespace
 
+import numpy as np
 import pytest
 
 from app.services.asr_service import (
     SILENCE_PLACEHOLDER,
+    ASRCancelledError,
+    ASRQueueTimeoutError,
     ASRService,
+    AudioDurationExceededError,
     compute_error_rates,
     compute_wpm,
     count_words,
     normalize_for_wer,
+    pcm16_to_float32,
 )
 
 
@@ -98,3 +105,94 @@ def test_empty_buffer_and_missing_model():
         make_service(FakeWhisper([])).transcribe_audio_stream(b"")
     with pytest.raises(RuntimeError):
         make_service(None).transcribe_audio_stream(b"x")
+
+
+def test_duration_ceiling_short_circuits_before_segment_iteration():
+    iterated = False
+
+    def failing_generator():
+        nonlocal iterated
+        iterated = True
+        yield seg("Should never be reached", 0.0, 2.0)
+
+    class LazyWhisper:
+        def transcribe(self, audio, **kwargs):
+            info = SimpleNamespace(language="en", language_probability=0.99, duration=65.0)
+            return failing_generator(), info
+
+    service = make_service(LazyWhisper())
+    with pytest.raises(AudioDurationExceededError):
+        service.transcribe_audio_stream(b"valid-bytes")
+    assert iterated is False
+
+
+def test_pcm16_to_float32_and_direct_array_transcription():
+    samples = np.array([0, 16384, -16384, 32767], dtype="<i2")
+    waveform = pcm16_to_float32(samples.tobytes(), sample_rate=16000)
+    assert waveform.dtype == np.float32
+    assert waveform.shape == (4,)
+    assert waveform[1] == pytest.approx(0.5, abs=1e-4)
+
+    # Odd byte length and invalid sample rate are rejected
+    with pytest.raises(ValueError):
+        pcm16_to_float32(b"\x00\x01\x02", sample_rate=16000)
+    with pytest.raises(ValueError):
+        pcm16_to_float32(samples.tobytes(), sample_rate=1000)
+
+    # Direct ndarray input skips io.BytesIO
+    model = FakeWhisper([seg("Direct PCM array", 0.0, 1.0)], duration=1.0)
+    service = make_service(model)
+    metrics = service.transcribe_audio_stream(waveform)
+    assert metrics.transcription == "Direct PCM array"
+    assert isinstance(model.stream, np.ndarray)
+
+
+def test_cooperative_cancellation_stops_segment_loop():
+    cancel_event = threading.Event()
+    consumed = 0
+
+    def segment_gen():
+        nonlocal consumed
+        consumed += 1
+        cancel_event.set()
+        yield seg("first segment", 0.0, 1.0)
+        consumed += 1
+        yield seg("second segment", 1.0, 2.0)
+
+    class CancelWhisper:
+        def transcribe(self, audio, **kwargs):
+            info = SimpleNamespace(language="en", language_probability=0.99, duration=2.0)
+            return segment_gen(), info
+
+    service = make_service(CancelWhisper())
+    with pytest.raises(ASRCancelledError):
+        service.transcribe_audio_stream(b"audio", cancel_event=cancel_event)
+    assert consumed == 1
+
+
+@pytest.mark.asyncio
+async def test_async_semaphore_queue_timeout():
+    gate = threading.Event()
+    started = threading.Event()
+
+    class SlowWhisper:
+        def transcribe(self, audio, **kwargs):
+            started.set()
+            gate.wait(timeout=2.0)
+            info = SimpleNamespace(language="en", language_probability=0.99, duration=1.0)
+            return iter([seg("done", 0.0, 1.0)]), info
+
+    service = make_service(SlowWhisper())
+    service.max_concurrency = 1
+    service.queue_timeout_seconds = 0.05
+    service.asr_timeout_seconds = 5.0
+
+    task1 = asyncio.create_task(service.atranscribe_audio_stream(b"first"))
+    await asyncio.to_thread(started.wait, 1.0)
+
+    with pytest.raises(ASRQueueTimeoutError):
+        await service.atranscribe_audio_stream(b"second")
+
+    gate.set()
+    result1 = await task1
+    assert result1.transcription == "done"

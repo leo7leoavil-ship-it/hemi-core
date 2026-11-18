@@ -25,6 +25,13 @@ def test_defaults_match_specification(monkeypatch):
     assert settings.ASR_DEVICE == "cpu"
     assert settings.ASR_COMPUTE_TYPE == "int8"
     assert "PyTorch" in settings.ASR_INITIAL_PROMPT
+    assert settings.MAX_AUDIO_BYTES == 5 * 1024 * 1024
+    assert settings.MAX_AUDIO_SECONDS == 60.0
+    assert settings.ASR_MAX_CONCURRENCY == 1
+    assert settings.ASR_QUEUE_TIMEOUT_SECONDS == 10.0
+    assert settings.ASR_TIMEOUT_SECONDS == 25.0
+    assert settings.RAG_TIMEOUT_SECONDS == 5.0
+    assert settings.LLM_TIMEOUT_SECONDS == 30.0
 
 
 def test_no_hardcoded_default_token(monkeypatch):

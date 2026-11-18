@@ -195,3 +195,129 @@ def test_websocket_empty_utterance_reports_error_and_stays_open(client):
 
         ws.send_text('{"action": "nonsense"}')
         assert ws.receive_json()["status_code"] == 400
+
+
+def test_voice_queue_saturation_returns_429(client, fakes, monkeypatch):
+    from app.services.asr_service import ASRQueueTimeoutError
+
+    async def busy_asr(file_bytes, expected_transcript=None):
+        raise ASRQueueTimeoutError("ASR engine is busy: queue wait exceeded 10.0s.")
+
+    monkeypatch.setattr(fakes["asr"], "atranscribe_audio_stream", busy_asr)
+    response = _voice(client)
+    assert response.status_code == 429
+
+
+def test_voice_stage_timeout_returns_504(client, fakes, monkeypatch):
+    import asyncio
+
+    async def timeout_asr(file_bytes, expected_transcript=None):
+        raise asyncio.TimeoutError("stage timed out")
+
+    monkeypatch.setattr(fakes["asr"], "atranscribe_audio_stream", timeout_asr)
+    response = _voice(client)
+    assert response.status_code == 504
+
+
+def test_websocket_pcm16_direct_array_and_duration_limit(client):
+    with client.websocket_connect(f"{WS_URL}?token=test-token") as ws:
+        assert ws.receive_json() == {"event": "ready"}
+        ws.send_text('{"action": "config", "format": "pcm16", "sample_rate": 16000}')
+        # Odd byte length PCM16 should return 422
+        ws.send_bytes(b"\x00\x01\x02")
+        ws.send_text('{"action": "end"}')
+        err = ws.receive_json()
+        assert err["event"] == "error" and err["status_code"] == 422
+
+        # Valid 16-bit PCM samples (even byte count)
+        ws.send_bytes(b"\x00\x00\x10\x00" * 100)
+        ws.send_text('{"action": "end"}')
+        events = [ws.receive_json() for _ in range(4)]
+        assert [e["event"] for e in events] == ["transcribing", "retrieving", "evaluating", "completed"]
+
+
+def test_custom_scenario_across_text_voice_and_websocket(client, fakes):
+    # 1. Text endpoint with custom scenario forwards resolved topic to RAG
+    res_text = client.post(
+        TEXT_URL,
+        headers=AUTH_HEADERS,
+        json={
+            "candidate_text": "We inspected the PodDisruptionBudget and readiness probe.",
+            "target_scenario": "custom",
+            "custom_scenario": "Kubernetes zero-downtime deployment review",
+        },
+    )
+    assert res_text.status_code == 200
+    assert fakes["rag"].calls[-1]["scenario"] == "Kubernetes zero-downtime deployment review"
+
+    # Missing custom_scenario when target_scenario="custom" -> 422
+    res_missing = client.post(
+        TEXT_URL,
+        headers=AUTH_HEADERS,
+        json={
+            "candidate_text": "We inspected the PodDisruptionBudget.",
+            "target_scenario": "custom",
+        },
+    )
+    assert res_missing.status_code == 422
+
+    # 2. Voice endpoint with custom scenario and expanded preset (devops_ci_cd)
+    res_voice_preset = _voice(client, target_scenario="devops_ci_cd")
+    assert res_voice_preset.status_code == 200
+    assert fakes["rag"].calls[-1]["scenario"] == "devops_ci_cd"
+
+    res_voice_custom = _voice(
+        client,
+        target_scenario="custom",
+        custom_scenario="GraphQL federation gateway caching",
+    )
+    assert res_voice_custom.status_code == 200
+    assert fakes["rag"].calls[-1]["scenario"] == "GraphQL federation gateway caching"
+
+    # Providing custom_scenario with a preset is rejected with 422
+    res_invalid_pair = _voice(
+        client,
+        target_scenario="code_review",
+        custom_scenario="Should not be allowed with preset",
+    )
+    assert res_invalid_pair.status_code == 422
+
+    # 3. WebSocket custom scenario and preset reset
+    with client.websocket_connect(f"{WS_URL}?token=test-token") as ws:
+        assert ws.receive_json() == {"event": "ready"}
+        ws.send_text(
+            '{"action": "config", "target_scenario": "custom", '
+            '"custom_scenario": "PostgreSQL vacuum and MVCC tuning"}'
+        )
+        ws.send_bytes(b"audio-chunk")
+        ws.send_text('{"action": "end"}')
+        events = [ws.receive_json() for _ in range(4)]
+        assert events[-1]["event"] == "completed"
+        assert fakes["rag"].calls[-1]["scenario"] == "PostgreSQL vacuum and MVCC tuning"
+
+        # Switching back to a preset clears custom_scenario automatically
+        ws.send_text('{"action": "config", "target_scenario": "daily_standup"}')
+        ws.send_bytes(b"audio-chunk-2")
+        ws.send_text('{"action": "end"}')
+        events2 = [ws.receive_json() for _ in range(4)]
+        assert events2[-1]["event"] == "completed"
+        assert fakes["rag"].calls[-1]["scenario"] == "daily_standup"
+
+
+def test_interactive_ui_console_and_openapi_guide(client):
+    ui_res = client.get("/ui")
+    assert ui_res.status_code == 200
+    assert "text/html" in ui_res.headers["content-type"]
+    html = ui_res.text
+    assert "API_AUTH_TOKEN" in html
+    assert "system_design_interview" in html
+    assert "devops_ci_cd" in html
+    assert "custom_scenario" in html
+
+    openapi_res = client.get("/openapi.json")
+    assert openapi_res.status_code == 200
+    info_desc = openapi_res.json()["info"]["description"]
+    assert "API_AUTH_TOKEN" in info_desc
+    assert "Postman" in info_desc
+    assert "/api/v1/ws/practice" in info_desc
+    assert "devops_ci_cd" in info_desc
