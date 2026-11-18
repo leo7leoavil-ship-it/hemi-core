@@ -9,7 +9,7 @@ pinned: false
 short_description: MaaS engine for technical English evaluation (ASR + RAG + LLM)
 ---
 
-# Tech Tutor Engine
+# Tech Tutor Engine Blueprint
 
 **Asistente de Inteligencia Artificial Especializado en Inglés Técnico para Ingenieros del Área de Tecnología**  
 *Proyecto de Titulación - Ingeniería en Computación · Universidad Autónoma de Tlaxcala*
@@ -18,7 +18,7 @@ short_description: MaaS engine for technical English evaluation (ASR + RAG + LLM
 
 ---
 
-## 1. Visión General
+## System Overview
 
 `tech-tutor-engine` es un **Motor de Inferencia y Evaluación Técnica Asíncrono (Model-as-a-Service)** que diagnostica y puntúa la competencia en **inglés técnico** de ingenieros de software. Expone una API REST y un canal WebSocket (sin interfaz gráfica propia; el frontend queda como Trabajo Futuro) sobre **FastAPI** y tres pipelines de IA:
 
@@ -38,7 +38,37 @@ flowchart LR
 
 ---
 
-## 2. Estructura del Repositorio
+## Subdirectories & System Boundaries
+
+- [app](./app/README.md): Central FastAPI application package coordinating lifespan preloading, CORS middleware, API v1 routing, core security/logging, schemas, and AI pipeline services.
+- [scripts](./scripts/README.md): Operational utilities for local server execution (`run_server.py`) and large-scale ChromaDB corpus seeding (`seed_corpus.py`).
+
+---
+
+## Global Invariants
+
+- **Fail-closed API security**: Every endpoint (REST and WebSocket) enforces validation against `API_AUTH_TOKEN`; an unset or invalid token causes immediate 401 Unauthorized rejection.
+- **In-memory audio processing**: Audio streams are decoded strictly via `io.BytesIO` without writing temporary audio files to disk.
+- **Deterministic metric computation**: Technical lexical density is computed deterministically in Python code; the LLM is prohibited from calculating or hallucinating ratios.
+- **Strict error mapping**: AI pipeline failures map to explicit HTTP status codes (400 format/empty, 413 file size, 422 scenario/unintelligible, 502 LLM failure, 503 ASR uninitialized) without fabricating mock scores.
+
+---
+
+## Global Side Effects
+
+- **External AI inference**: Outbound HTTPS calls to Groq Cloud API (`https://api.groq.com/openai/v1`).
+- **Vector database persistence**: Local disk access to SQLite vector database at `data/technical_corpus_db/chroma.sqlite3`.
+- **Automated dataset synchronization**: Downloads snapshot from Hugging Face Hub during application startup lifespan when local vector database is absent.
+
+---
+
+## System Verification
+
+- Run: `pytest`
+
+---
+
+## Estructura del Repositorio
 
 ```
 tech_tutor_engine/
@@ -64,7 +94,7 @@ tech_tutor_engine/
 
 ---
 
-## 3. Ejecución Local
+## Ejecución Local
 
 ```bash
 python -m venv .venv && .venv\Scripts\activate        # Windows (Linux/macOS: source .venv/bin/activate)
@@ -91,7 +121,7 @@ Lista completa en [`.env.example`](.env.example).
 
 ---
 
-## 4. API
+## API
 
 Todas las rutas requieren `Authorization: Bearer <API_AUTH_TOKEN>` (o `X-API-Key`), salvo `GET /` y `/docs`.
 
@@ -107,32 +137,9 @@ Todas las rutas requieren `Authorization: Bearer <API_AUTH_TOKEN>` (o `X-API-Key
 
 **Códigos de error:** `400` formato no soportado/archivo vacío · `401` token inválido · `413` audio demasiado grande · `422` escenario desconocido, audio ilegible o sin habla · `502` fallo del motor LLM · `503` ASR no cargado.
 
-```bash
-curl -X GET  "$URL/health" -H "Authorization: Bearer $API_TOKEN"
-
-curl -X POST "$URL/api/v1/evaluate/voice" -H "Authorization: Bearer $API_TOKEN" \
-  -F "audio_file=@sample.wav" -F "target_scenario=system_design_interview"
-
-curl -X POST "$URL/api/v1/evaluate/text" -H "Authorization: Bearer $API_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"candidate_text":"We shard the database to reduce write latency.","target_scenario":"system_design_interview"}'
-```
-
-### Protocolo WebSocket
-
-Conexión: `wss://<host>/api/v1/ws/practice?token=<API_TOKEN>` (o cabecera `Authorization`).
-
-| Dirección | Mensaje |
-|---|---|
-| cliente → servidor | `{"action":"config","target_scenario":"code_review","format":"webm","expected_transcript":"..."}` (opcional; `format` = `webm` \| `pcm16` + `sample_rate`) |
-| cliente → servidor | tramas **binarias** con el audio |
-| cliente → servidor | `{"action":"end"}` procesa la locución · `{"action":"reset"}` descarta el buffer |
-| servidor → cliente | `{"event":"ready"}` → `transcribing` → `retrieving` (`partial_text`) → `evaluating` → `completed` (`payload` = `EvaluationResponse`) |
-| servidor → cliente | `{"event":"error","status_code":..,"detail":".."}` (la conexión sigue abierta) |
-
 ---
 
-## 5. Rúbricas MCER / CEFR
+## Rúbricas MCER / CEFR
 
 | Nivel | Descriptor técnico | Criterio |
 |---|---|---|
@@ -143,7 +150,7 @@ Conexión: `wss://<host>/api/v1/ws/practice?token=<API_TOKEN>` (o cabecera `Auth
 
 ---
 
-## 6. Pruebas y Benchmarks
+## Pruebas y Benchmarks
 
 ```bash
 pytest -v                                   # Suite con dobles de prueba: sin red, sin modelos
@@ -156,6 +163,6 @@ Objetivos de la tesis: **WER < 12 %**, **Recall@3 ≥ 85 %**, **latencia total <
 
 ---
 
-## 7. Despliegue en Producción
+## Despliegue en Producción
 
 Consulte la guía paso a paso en [`GUIA_DESPLIEGUE_PRODUCCION.md`](GUIA_DESPLIEGUE_PRODUCCION.md).
