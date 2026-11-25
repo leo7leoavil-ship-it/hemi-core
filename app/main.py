@@ -1,4 +1,4 @@
-"""Tech Tutor Engine - Main FastAPI Application Entry Point.
+"""hemi-core - Main FastAPI Application Entry Point.
 
 Clean Architecture implementation of the Model-as-a-Service (MaaS) evaluation engine:
 Lifespan context management (corpus provisioning + AI model preloading), CORS middleware
@@ -70,11 +70,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     yield
 
-    logger.info("=== Gracefully shutting down Tech Tutor Engine ===")
+    logger.info("=== Gracefully shutting down hemi-core ===")
 
 
 def create_application() -> FastAPI:
-    """Application factory for Tech Tutor Engine."""
+    """Application factory for hemi-core."""
     settings = get_settings()
 
     app = FastAPI(

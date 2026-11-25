@@ -168,7 +168,7 @@ class ASRMetrics(BaseModel):
 
 
 class EvaluationResponse(BaseModel):
-    """Comprehensive evaluation payload returned by Tech Tutor Engine endpoints."""
+    """Comprehensive evaluation payload returned by hemi-core endpoints."""
 
     status: str = Field(
         default="success",

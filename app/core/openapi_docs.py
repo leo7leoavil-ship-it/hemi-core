@@ -63,11 +63,11 @@ def build_openapi_description(base_summary: str) -> str:
 
     return f"""{base_summary}
 
-Use this specification to integrate external clients (Postman, cURL, backend services, or web frontends) with the Tech Tutor Engine REST and WebSocket APIs. For live browser testing with microphone capture, open the [Interactive Testing Console](/ui).
+Use this specification to integrate external clients (Postman, cURL, backend services, or web frontends) with the hemi-core REST and WebSocket APIs. For live browser testing with microphone capture, open the [Interactive Testing Console](/ui).
 
 ## 1. Service Overview and Base Endpoints
 
-Tech Tutor Engine exposes synchronous HTTP REST endpoints under `/api/v1` and a full-duplex WebSocket channel for real-time voice practice.
+hemi-core exposes synchronous HTTP REST endpoints under `/api/v1` and a full-duplex WebSocket channel for real-time voice practice.
 
 | Resource | Path | Purpose |
 | :--- | :--- | :--- |

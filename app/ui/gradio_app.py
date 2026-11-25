@@ -44,7 +44,7 @@ def build_testing_console_html() -> str:
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Tech Tutor Engine · Consola Interactiva y Guía de API</title>
+  <title>hemi-core v1.0.0 · Consola Interactiva y Guía de API</title>
   <link rel="icon" type="image/svg+xml" href="{FAVICON_DATA_URI}" />
   <style>
     :root, [data-theme="light"] {{
@@ -401,7 +401,7 @@ def build_testing_console_html() -> str:
   <div class="container">
     <div class="header">
       <div>
-        <h1>Tech Tutor Engine · Consola de Pruebas</h1>
+        <h1>hemi-core v1.0.0 · Consola de Pruebas</h1>
         <p>Motor MaaS de Evaluación de Inglés Técnico (faster-whisper int8 + ChromaDB + Groq gpt-oss-120b)</p>
       </div>
       <div class="header-links">
@@ -608,7 +608,7 @@ def build_testing_console_html() -> str:
       <div class="card">
         <div class="card-title">📘 Guía Completa para Consumir el Servicio desde Postman, cURL o Sistemas Externos</div>
         <p class="help-text" style="font-size:14px; color:var(--text);">
-          Sigue estos pasos para integrar cualquier cliente externo con <strong>Tech Tutor Engine</strong>:
+          Sigue estos pasos para integrar cualquier cliente externo con <strong>hemi-core</strong>:
         </p>
         <h4>1. Autenticación Obligatoria (Fail-Closed)</h4>
         <ul>

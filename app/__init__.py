@@ -1,4 +1,4 @@
-"""Tech Tutor Engine - Production Backend Package.
+"""hemi-core - Production Backend Package.
 
 Asistente de Inteligencia Artificial Especializado en Inglés Técnico
 para Ingenieros del Área de Tecnología.

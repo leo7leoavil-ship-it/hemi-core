@@ -248,7 +248,7 @@ def run_latency(args: argparse.Namespace) -> Dict[str, Any]:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Tech Tutor Engine thesis benchmarks")
+    parser = argparse.ArgumentParser(description="hemi-core thesis benchmarks")
     sub = parser.add_subparsers(dest="command", required=True)
 
     wer = sub.add_parser("wer", help="Word/Character Error Rate")

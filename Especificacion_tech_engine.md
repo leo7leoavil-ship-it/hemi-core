@@ -1,4 +1,4 @@
-# ESPECIFICACIÓN TÉCNICA FORMAL: MOTOR MAAS DE EVALUACIÓN DE INGLÉS TÉCNICO (`tech-tutor-engine` v1.0.0)
+# ESPECIFICACIÓN TÉCNICA FORMAL: MOTOR MAAS DE EVALUACIÓN DE INGLÉS TÉCNICO (`hemi-core` v1.0.0)
 
 **Proyecto de Tesis:** Asistente de Inteligencia Artificial Especializado en Inglés Técnico para Ingenieros del Área de Tecnología  
 **Institución:** Universidad Autónoma de Tlaxcala — Unidad Académica Multidisciplinaria Campus Calpulalpan  
@@ -14,7 +14,7 @@
 
 ### 1.1. Definición como Motor Model-as-a-Service (MaaS)
 
-`tech-tutor-engine` se diseña e implementa como un **Motor de Inferencia y Evaluación Técnica Asíncrono (Model-as-a-Service / MaaS)** desacoplado de aplicaciones frontend monolíticas (el desarrollo de una plataforma cliente completa en React/Next.js y agentes conversacionales visuales queda formalmente clasificado como Trabajo Futuro).
+`hemi-core` (`v1.0.0`), núcleo del ecosistema Hemi, se diseña e implementa como un **Motor de Inferencia y Evaluación Técnica Asíncrono (Model-as-a-Service / MaaS)** desacoplado de aplicaciones frontend monolíticas (el desarrollo de una plataforma cliente completa en React/Next.js y la interfaz visual interactiva de Hemi quedan formalmente clasificados como Trabajo Futuro).
 
 El motor expone capacidades de reconocimiento automático de voz (ASR), recuperación semántica aumentada (RAG) y evaluación automatizada bajo rúbricas del Marco Común Europeo de Referencia para las Lenguas (**MCER / CEFR: B1–C2**) mediante interfaces abiertas y estandarizadas:
 
@@ -83,7 +83,7 @@ Por cada petición de voz se calculan y reportan: `transcription`, `detected_lan
 
 Implementado en `app/services/rag_service.py` y aprovisionado por `app/services/corpus_sync.py`.
 
-- **Base Vectorial:** `ChromaDB` (`PersistentClient` sobre `data/technical_corpus_db/chroma.sqlite3`), colección `tech_tutor_corpus` con **213,439 fragmentos indexados** en espacio de distancia coseno (`hnsw:space: cosine`).
+- **Base Vectorial:** `ChromaDB` (`PersistentClient` sobre `data/technical_corpus_db/chroma.sqlite3`), colección `hemi_core_corpus` con **213,439 fragmentos indexados** en espacio de distancia coseno (`hnsw:space: cosine`).
 - **Modelo de Embeddings:** `SentenceTransformer` (`all-MiniLM-L6-v2`, 384 dimensiones).
 - **Fusión Semántica de Escenario (`build_search_query`):** La consulta se construye como `"{escenario_efectivo}: {texto}"`. Cuando el usuario selecciona `target_scenario="custom"`, el escenario efectivo corresponde al texto validado de `custom_scenario` (evitando diluir el embedding con la palabra genérica `"custom"`).
 - **Sanitización Post-Recuperación (`sanitize_chunk_text`):** Elimina etiquetas residuales de maquetado (`@article@`, `@video@`, `@feed@`) y colapsa espacios/saltos de línea redundantes para optimizar el presupuesto de tokens hacia el LLM.

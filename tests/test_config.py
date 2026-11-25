@@ -14,12 +14,12 @@ def test_defaults_match_specification(monkeypatch):
     for var in ("API_AUTH_TOKEN", "API_TOKEN", "GROQ_API_KEY"):
         monkeypatch.delenv(var, raising=False)
     settings = fresh()
-    assert settings.PROJECT_NAME == "Tech Tutor Engine"
+    assert settings.PROJECT_NAME == "hemi-core"
     assert settings.LLM_MODEL == "openai/gpt-oss-120b"
     assert settings.LLM_TEMPERATURE == 0.1
     assert settings.GROQ_BASE_URL == "https://api.groq.com/openai/v1"
     assert settings.CHROMA_PERSIST_DIRECTORY == "./data/technical_corpus_db"
-    assert settings.CHROMA_COLLECTION_NAME == "tech_tutor_corpus"
+    assert settings.CHROMA_COLLECTION_NAME == "hemi_core_corpus"
     assert settings.EMBEDDING_MODEL_NAME == "all-MiniLM-L6-v2"
     assert settings.ASR_MODEL_NAME == "large-v3-turbo"
     assert settings.ASR_DEVICE == "cpu"

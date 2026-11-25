@@ -1,6 +1,6 @@
-# Guía de Despliegue a Nivel Productivo · Tech Tutor Engine
+# Guía de Despliegue a Nivel Productivo · hemi-core (`v1.0.0`)
 
-Esta guía describe cómo llevar **Tech Tutor Engine** (`FastAPI + faster-whisper int8 + ChromaDB 213k + Groq gpt-oss-120b`) desde un entorno local hasta una operación estable a nivel productivo, cubriendo dos rutas según el presupuesto y la etapa del proyecto:
+Esta guía describe cómo llevar **`hemi-core` (`v1.0.0`)** (`FastAPI + faster-whisper int8 + ChromaDB 213k + Groq gpt-oss-120b`) desde un entorno local hasta una operación estable a nivel productivo, cubriendo dos rutas según el presupuesto y la etapa del proyecto:
 
 - **Ruta A · Desarrollo, Pruebas Externas y Defensa de Tesis (Costo $0):** Servidor local + **Cloudflare Tunnel (`cloudflared`)** con HTTPS/WSS y subdominio temporal o fijo.
 - **Ruta B · Producción Continua 24/7 (Contenedor Docker):** Despliegue del `Dockerfile` en un VPS con **4–8 GB de RAM** (Oracle Cloud Free Tier, DigitalOcean/Azure con créditos estudiantiles o Hugging Face Spaces Docker).
@@ -15,7 +15,7 @@ En ejecución con todos los modelos precargados en memoria, el servicio consume 
 |---|---|---|
 | `faster-whisper` (`large-v3-turbo`, CPU `int8`, `beam_size=1`) | 1.5 – 2.5 GB | Un solo worker en memoria (`ASR_MAX_CONCURRENCY=1`) |
 | `SentenceTransformer` (`all-MiniLM-L6-v2` + PyTorch CPU) | 0.5 – 1.0 GB | Embeddings de 384 dimensiones |
-| `ChromaDB` (`tech_tutor_corpus`, 213,439 vectores) | 0.8 – 1.5 GB | `~1.08 GB` en disco (`chroma.sqlite3` + índice HNSW) |
+| `ChromaDB` (`hemi_core_corpus`, 213,439 vectores) | 0.8 – 1.5 GB | `~1.08 GB` en disco (`chroma.sqlite3` + índice HNSW) |
 | FastAPI + Uvicorn + Buffers `BytesIO` (máx. 5 MB/petición) | 0.3 – 0.5 GB | Procesamiento de audio 100 % en memoria |
 
 > **Recomendación mínima para producción 24/7:** 4 vCPU y 8 GB de RAM (mínimo estricto: 2 vCPU y 4 GB de RAM con swap habilitado).
@@ -49,7 +49,7 @@ En ejecución con todos los modelos precargados en memoria, el servicio consume 
    ```
 4. **Verificar el corpus local (`213,439` vectores):**
    ```powershell
-   python -c "import chromadb; c=chromadb.PersistentClient(path='data/technical_corpus_db').get_collection('tech_tutor_corpus'); print(c.count())"
+   python -c "import chromadb; c=chromadb.PersistentClient(path='data/technical_corpus_db').get_collection('hemi_core_corpus'); print(c.count())"
    ```
 
 ---
@@ -84,29 +84,29 @@ Espere hasta ver `All AI pipelines preloaded in memory. System ready for inferen
 
 ### B.1. Preparar la base vectorial (`data/technical_corpus_db/`)
 La carpeta `data/technical_corpus_db/` (~1.08 GB) no se sube a Git. Para producción tiene dos estrategias:
-1. **Volumen persistente en VPS (Recomendada):** Copie `data/technical_corpus_db/` una sola vez al servidor (`scp`/`rsync`) y móntela como volumen en Docker (`-v /srv/tech_tutor/technical_corpus_db:/app/data/technical_corpus_db`). Arranca en segundos sin descargar nada.
+1. **Volumen persistente en VPS (Recomendada):** Copie `data/technical_corpus_db/` una sola vez al servidor (`scp`/`rsync`) y móntela como volumen en Docker (`-v /srv/hemi-core/technical_corpus_db:/app/data/technical_corpus_db`). Arranca en segundos sin descargar nada.
 2. **Descarga automática desde Hugging Face Datasets (para contenedores efímeros):**
    ```powershell
    hf auth login
-   hf repo create <TU_USUARIO_HF>/tech-tutor-corpus --repo-type dataset --private
-   hf upload <TU_USUARIO_HF>/tech-tutor-corpus "data/technical_corpus_db" . --repo-type dataset
+   hf repo create <TU_USUARIO_HF>/hemi-core-corpus --repo-type dataset --private
+   hf upload <TU_USUARIO_HF>/hemi-core-corpus "data/technical_corpus_db" . --repo-type dataset
    ```
-   Configure `CORPUS_AUTO_DOWNLOAD=true`, `CORPUS_DATASET_REPO=<TU_USUARIO_HF>/tech-tutor-corpus` y `HF_TOKEN=<token_lectura>` en el contenedor.
+   Configure `CORPUS_AUTO_DOWNLOAD=true`, `CORPUS_DATASET_REPO=<TU_USUARIO_HF>/hemi-core-corpus` y `HF_TOKEN=<token_lectura>` en el contenedor.
 
 ### B.2. Construir y ejecutar el contenedor Docker
 El `Dockerfile` multi-stage incluye `ffmpeg`, PyTorch CPU, pre-descarga de `large-v3-turbo` y `all-MiniLM-L6-v2` (Zero Cold-Start) y ejecuta Uvicorn como usuario no privilegiado (`uid 1000`) en el puerto `7860`:
 
 ```bash
-docker build -t tech-tutor-engine:1.0.0 .
+docker build -t hemi-core:1.0.0 .
 
 docker run -d \
-  --name tech-tutor-engine \
+  --name hemi-core \
   --restart unless-stopped \
   -p 7860:7860 \
   --env-file .env \
   -e PORT=7860 \
-  -v /srv/tech_tutor/technical_corpus_db:/app/data/technical_corpus_db \
-  tech-tutor-engine:1.0.0
+  -v /srv/hemi-core/technical_corpus_db:/app/data/technical_corpus_db \
+  hemi-core:1.0.0
 ```
 
 > **Importante:** Mantenga **un único worker de Uvicorn** (`CMD ["uvicorn", "app.main:app", ...]`). Los modelos de Whisper y MiniLM residen en memoria y se comparten de forma segura mediante el semáforo `ASR_MAX_CONCURRENCY=1`.
@@ -154,7 +154,7 @@ Sustituya `<URL>` por su dominio HTTPS y `<TOKEN>` por su `API_AUTH_TOKEN`:
 
 - [ ] `API_AUTH_TOKEN` único generado con `secrets.token_urlsafe(32)` y `.env` excluido de Git
 - [ ] `pytest -v` pasando **72/72** pruebas en verde
-- [ ] Base vectorial confirmada con **213,439 vectores** en `tech_tutor_corpus`
+- [ ] Base vectorial confirmada con **213,439 vectores** en `hemi_core_corpus`
 - [ ] `/health` devolviendo `"status": "ok"` con los tres subsistemas en `true`
 - [ ] Pruebas manuales de voz (REST + WebSocket), texto, `custom_scenario` y RAG superadas en `/ui`
 - [ ] Benchmarks de tesis (`tests/benchmark_thesis.py`) archivados para la defensa

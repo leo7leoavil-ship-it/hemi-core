@@ -21,7 +21,7 @@ def _voice(client, filename="sample.wav", content=b"RIFFfakeaudio", **form):
 # ---------------------------------------------------------------- root & health
 def test_root_index(client):
     data = client.get("/").json()
-    assert data["service"] == "Tech Tutor Engine"
+    assert data["service"] == "hemi-core"
     assert data["status"] == "online"
     assert data["websocket"] == "/api/v1/ws/practice"
 
@@ -32,7 +32,7 @@ def test_health_contract(client, path):
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "ok"
-    assert data["app"] == "Tech Tutor Engine"
+    assert data["app"] == "hemi-core"
     assert data["chroma_ready"] is True
     assert data["asr_ready"] is True
     assert data["llm_configured"] is True

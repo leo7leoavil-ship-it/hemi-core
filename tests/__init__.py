@@ -1,1 +1,1 @@
-"""Tests package for Tech Tutor Engine."""
+"""Tests package for hemi-core."""

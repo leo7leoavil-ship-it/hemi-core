@@ -1,4 +1,4 @@
-"""Centralized logging configuration for Tech Tutor Engine."""
+"""Centralized logging configuration for hemi-core."""
 
 import logging
 import sys
@@ -15,7 +15,7 @@ def setup_logging(debug: bool = False) -> logging.Logger:
     handler = logging.StreamHandler(sys.stdout)
     handler.setFormatter(formatter)
 
-    root_logger = logging.getLogger("tech_tutor")
+    root_logger = logging.getLogger("hemi_core")
     root_logger.setLevel(log_level)
 
     # Avoid duplicate handlers if reconfigured

@@ -1,5 +1,5 @@
 # ==============================================================================
-# Tech Tutor Engine - Production dependencies
+# hemi-core - Production dependencies
 # CPU-only PyTorch wheels are resolved through the extra index below (the Docker
 # build also exports PIP_EXTRA_INDEX_URL). This avoids ~2 GB of CUDA libraries.
 # ==============================================================================

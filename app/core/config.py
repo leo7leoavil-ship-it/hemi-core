@@ -20,10 +20,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    """Centralized production configuration for Tech Tutor Engine."""
+    """Centralized production configuration for hemi-core."""
 
     # Project Metadata
-    PROJECT_NAME: str = "Tech Tutor Engine"
+    PROJECT_NAME: str = "hemi-core"
     VERSION: str = "1.0.0"
     DESCRIPTION: str = (
         "AI Assistant Specialized in Technical English for Computer Engineers"
@@ -80,7 +80,7 @@ class Settings(BaseSettings):
         description="Filesystem persistence directory for ChromaDB",
     )
     CHROMA_COLLECTION_NAME: str = Field(
-        default="tech_tutor_corpus",
+        default="hemi_core_corpus",
         description="Target ChromaDB collection containing indexed IT corpus",
     )
     EMBEDDING_MODEL_NAME: str = Field(
@@ -94,7 +94,7 @@ class Settings(BaseSettings):
         description="Download the vector DB from the HF dataset at startup if it is missing",
     )
     CORPUS_DATASET_REPO: str = Field(
-        default="leonardo-beltran/tech-tutor-corpus",
+        default="leonardo-beltran/hemi-core-corpus",
         description="HF dataset repo id hosting the persisted ChromaDB directory",
     )
     HF_TOKEN: str = Field(

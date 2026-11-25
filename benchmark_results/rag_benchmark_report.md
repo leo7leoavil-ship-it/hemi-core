@@ -4,7 +4,7 @@
 **Comando ejecutado:** `python tests/benchmark_thesis.py rag --queries benchmark_data/queries.json --ks 3 5`  
 **Reporte JSON fuente:** [`benchmark_results/rag_20261123_231549.json`](rag_20261123_231549.json)  
 **Conjunto de consultas:** [`benchmark_data/queries.json`](../benchmark_data/queries.json)  
-**Base vectorial evaluada:** `data/technical_corpus_db` (colección `tech_tutor_corpus`, **213,439 vectores**)
+**Base vectorial evaluada:** `data/technical_corpus_db` (colección `hemi_core_corpus`, **213,439 vectores**)
 
 > **Nota de alcance:** Solo se ejecutó el subcomando `rag`. Los subcomandos `wer` y `latency` requieren archivos de audio de entrada (`.wav`, `.mp3`, `.webm`, `.ogg`, `.m4a`) que no están presentes en el workspace.
 

@@ -1,5 +1,5 @@
 ---
-title: Tech Tutor Engine
+title: hemi-core
 emoji: 🎙️
 colorFrom: blue
 colorTo: indigo
@@ -9,9 +9,9 @@ pinned: false
 short_description: MaaS engine for technical English evaluation (ASR + RAG + LLM)
 ---
 
-# Tech Tutor Engine
+# hemi-core (`v1.0.0`)
 
-**Asistente de Inteligencia Artificial Especializado en Inglés Técnico para Ingenieros del Área de Tecnología**  
+**Motor de diagnóstico desacoplado `hemi-core` (`v1.0.0`), núcleo del ecosistema Hemi**  
 *Proyecto de Titulación · Licenciatura en Ingeniería en Computación · Universidad Autónoma de Tlaxcala (UAM Campus Calpulalpan)*
 
 > El bloque YAML superior mantiene compatibilidad con despliegues en Hugging Face Spaces (`sdk: docker`, `app_port: 7860`).
@@ -20,10 +20,10 @@ short_description: MaaS engine for technical English evaluation (ASR + RAG + LLM
 
 ## 1. Visión General
 
-`tech-tutor-engine` es un **Motor de Inferencia y Evaluación Técnica Asíncrono (Model-as-a-Service / MaaS)** construido sobre **FastAPI** que diagnostica y puntúa la competencia en **inglés técnico** (hablado y escrito) de ingenieros de software mediante un pipeline multimodal de tres etapas:
+`hemi-core` es un **Motor de Inferencia y Evaluación Técnica Asíncrono (Model-as-a-Service / MaaS)** construido sobre **FastAPI** que diagnostica y puntúa la competencia en **inglés técnico** (hablado y escrito) de ingenieros de software mediante un pipeline multimodal de tres etapas:
 
 1. **ASR (`app/services/asr_service.py`):** `faster-whisper` (`large-v3-turbo`, CPU `int8`, `beam_size=1`) con decodificación estrictamente en memoria (`io.BytesIO` / arreglo `float32` directo para `pcm16`), parche de compatibilidad para `PyAV 19+`, filtro VAD, `initial_prompt` léxico de ingeniería, límites tempranos de **5 MB / 60 s**, semáforo asíncrono (`ASR_MAX_CONCURRENCY=1`, cola `10 s` → `429`), cancelación cooperativa entre segmentos (`threading.Event`) y métricas acústicas (confianza, WPM y WER/CER opcional con `jiwer`).
-2. **RAG (`app/services/rag_service.py`):** `ChromaDB` persistente (`tech_tutor_corpus`, **213,439 vectores**, `all-MiniLM-L6-v2`, similitud coseno) con sanitización regex post-recuperación y fusión de contexto `"{escenario_efectivo}: {texto}"`.
+2. **RAG (`app/services/rag_service.py`):** `ChromaDB` persistente (`hemi_core_corpus`, **213,439 vectores**, `all-MiniLM-L6-v2`, similitud coseno) con sanitización regex post-recuperación y fusión de contexto `"{escenario_efectivo}: {texto}"`.
 3. **LLM-as-a-Judge (`app/services/llm_service.py`):** `openai/gpt-oss-120b` en **Groq Cloud** (`temperature=0.1`, Structured Outputs con fallback automático a JSON mode) bajo rúbricas **MCER / CEFR (B1–C2)**. La densidad léxica (`lexical_density_ratio`) se calcula de forma **determinista en Python**, nunca por el LLM.
 
 ```mermaid
@@ -52,7 +52,7 @@ flowchart LR
 ## 3. Estructura del Repositorio
 
 ```text
-tech_tutor_engine/
+hemi-core/
 ├── .github/workflows/deploy.yml      # CI (pytest) + despliegue opcional a HF Spaces
 ├── app/
 │   ├── main.py                       # Lifespan (precarga de modelos), CORS, rutas /docs, /redoc, /ui
@@ -106,7 +106,7 @@ python -u -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 | `ASR_MAX_CONCURRENCY` / `ASR_QUEUE_TIMEOUT_SECONDS` | `1` / `10.0` | Serialización de inferencia ASR en CPU y espera máxima antes de `429` |
 | `ASR_TIMEOUT_SECONDS` / `RAG_TIMEOUT_SECONDS` / `LLM_TIMEOUT_SECONDS` | `90.0` / `15.0` / `30.0` | Timeouts explícitos por etapa (`504 Gateway Timeout`) |
 | `CHROMA_PERSIST_DIRECTORY` (`CHROMA_PERSIST_DIR`) | `./data/technical_corpus_db` | Directorio de la base vectorial ChromaDB |
-| `CORPUS_DATASET_REPO` / `HF_TOKEN` | `leonardo-beltran/tech-tutor-corpus` | Dataset privado de HF Hub para descarga automática si falta la base local |
+| `CORPUS_DATASET_REPO` / `HF_TOKEN` | `leonardo-beltran/hemi-core-corpus` | Dataset privado de HF Hub para descarga automática si falta la base local |
 
 Lista completa en [`.env.example`](.env.example).
 

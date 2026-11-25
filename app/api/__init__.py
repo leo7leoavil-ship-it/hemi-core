@@ -1,1 +1,1 @@
-"""API package for Tech Tutor Engine."""
+"""API package for hemi-core."""
